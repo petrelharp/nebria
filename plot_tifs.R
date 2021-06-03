@@ -1,6 +1,6 @@
 library(raster)
 
-tifs <- list.files(".", "*.tif")
+tifs <- list.files(".", "*.tif$")
 
 for (fn in tifs) {
     x <- raster(fn)
