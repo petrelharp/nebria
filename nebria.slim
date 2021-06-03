@@ -1,7 +1,7 @@
 initialize() {
 	initializeSLiMModelType("nonWF");
 	initializeSLiMOptions(dimensionality="xy");
-	initializeMutationRate(0.0);
+	initializeMutationRate(1e-7);
 	initializeMutationType("m1", 0.5, "f", 0.0);
 	initializeGenomicElementType("g1", m1, 1.0);
 	initializeGenomicElement(g1, 0, 99999);
@@ -12,8 +12,8 @@ initialize() {
 	defineConstant("SIGMA", 0.1); // dispersal distance
 	defineConstant("MAP_RES", 0.01); // resolution
 	defineConstant("A", MAP_RES * MAP_RES);
-	defineConstant("LAMBDA", 5.0);  // mean fecundity
-	defineConstant("K", 30 / A);  // mean density per unit area
+	defineConstant("LAMBDA", 3.0);  // mean fecundity
+	defineConstant("K", 10 / A);  // mean density per unit area
 	defineConstant("EPS", 0.01); // relative 'density' in bad habitat
 	defineConstant("NUM_INIT", 100); // number of initial populations
 	defineConstant("MAX_SIZE", 1e5);
