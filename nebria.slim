@@ -8,49 +8,108 @@ initialize() {
 	initializeRecombinationRate(1e-8);
 	
 	defineConstant("P_D", 0.2); // dispersal probability
-	defineConstant("MEAN_HOPS", 20); // mean number of dispersal hops
+	defineConstant("MEAN_HOPS", 200); // mean number of dispersal hops
 	defineConstant("SIGMA", 0.1); // dispersal distance
 	defineConstant("MAP_RES", 0.01); // resolution
 	defineConstant("A", MAP_RES * MAP_RES);
 	defineConstant("LAMBDA", 3.0);  // mean fecundity
-	defineConstant("K", 10 / A);  // mean density per unit area
+	defineConstant("K", 5 / A);  // mean density per unit area
 	defineConstant("EPS", 0.01); // relative 'density' in bad habitat
 	defineConstant("NUM_INIT", 100); // number of initial populations
 	defineConstant("MAX_SIZE", 1e5);
+	defineConstant("NUM_GENS", 200);
 	defineGlobal("TOTAL", 0);
+	
+	// note that LH0_4 looks like today (but lower-res)
+	defineGlobal("RASTERS",  c("HS15_17.png", "BA13_15.png", "EH8_12.png", "MH4_8.png", "LH0_4.png", "current.png"));
+	STEPSIZE=100; // years per generation (to make debugging go faster)
+	// the habitat is entirely RASTER[k] at RASTER_SWITCH_TIMES[k]
+	defineGlobal("RASTER_SWITCH_TIMES", asInteger(NUM_GENS - c(16, 14, 10, 6, 2, 0) * 1000 / STEPSIZE));
+	defineGlobal("RASTER_NUM", min(which(RASTER_SWITCH_TIMES > 0)));
+	defineGlobal("LAST_HABITAT", Image(RASTERS[max(0, RASTER_NUM - 1)]));
+	defineGlobal("NEXT_HABITAT", Image(RASTERS[RASTER_NUM]));
 	
 	// spatial interactions
 	initializeInteractionType(1, "xy", reciprocal=T, maxDistance=2 * MAP_RES);
 	i1.setInteractionFunction("n", 1/(2 * PI * A), MAP_RES);
 }
 
+s1 999 late() {
+	// switch rasters
+	defineGlobal("RASTER_NUM", RASTER_NUM + 1);
+	catn("Generation " + sim.generation + ": Interpolating from " + RASTERS[RASTER_NUM - 1] + "(" + (RASTER_NUM-1) + ") to " + RASTERS[RASTER_NUM] + "(" + RASTER_NUM + ").");
+	defineGlobal("LAST_HABITAT", Image(RASTERS[RASTER_NUM - 1]));
+	defineGlobal("NEXT_HABITAT", Image(RASTERS[RASTER_NUM]));
+}
+
+s99 2000 late() {
+	catn("Done!");
+	sim.simulationFinished();
+}
+
 1 late() {
-	habitat = Image("habitat.png");
+	this_num = max(0, RASTER_NUM - 1);
+	catn("Starting with raster" + RASTERS[this_num] + "(" + this_num + ") and interpolating to " + RASTERS[RASTER_NUM] + "(" + RASTER_NUM + ").");
+	sim.rescheduleScriptBlock(s1, generations=RASTER_SWITCH_TIMES[RASTER_SWITCH_TIMES > 0 & RASTER_SWITCH_TIMES < NUM_GENS]);
+	sim.rescheduleScriptBlock(s99, generations=NUM_GENS);
+}
+
+1 late() {
+	// FOR DEBUGGING: to see an extra map
+	sim.addSubpop("p2", 1);
+}
+
+1 late() {
+	habitat = LAST_HABITAT;
+	suitability = Image("geo_only_suitability.png");
 	width = habitat.width * MAP_RES;
 	height = habitat.height * MAP_RES;
-	good = which(habitat.floatK > 0);
-	good = sample(good, min(length(good), NUM_INIT));
-	good_x = MAP_RES * rep(seqLen(habitat.width), habitat.height)[good];
-	good_y = MAP_RES * repEach(seqLen(habitat.height), habitat.width)[good];
-	N = asInteger(K * length(good) * A);
+	num_patches = sum(habitat.floatG > EPS);
+	N = asInteger(K * NUM_INIT * A);
 	if (N > MAX_SIZE) stop("Too many individuals: " + N);
 	sim.addSubpop("p1", N);
 	p1.setSpatialBounds(c(0.0, 0.0, width, height));
 	cat("Setting up a population with " + N + " individuals");
 	cat(" and spatial bounds of " + paste(p1.spatialBounds));
-	catn(" and " + length(good) + " patches of good habitat.");
-	p1.defineSpatialMap('habitat', 'xy', habitat.floatK,
-		valueRange=c(EPS, 1.0), colors=c("#000000", "#FFFFFF"));
+	catn(" and " + num_patches + " patches of good habitat.");
+
+	for (p in sim.subpopulations) {
+		p.defineSpatialMap('habitat', 'xy', habitat.floatG,
+			valueRange=c(0.0, 1.0), colors=c("#000000", "#FFFFFF"));
+		p.defineSpatialMap('suitability', 'xy', suitability.floatK,
+			valueRange=c(0.0, 1.0), colors=c("#000000", "#FFFFFF"));
+	}
+	good = matrix(rep(-1.0, NUM_INIT*2), nrow=NUM_INIT);
+	for (k in seqLen(NUM_INIT)) {
+		pos = p1.pointUniform();
+		while (p1.spatialMapValue('habitat', pos) < EPS) {
+			pos = p1.pointUniform();			
+		}
+		good[k,] = pos;
+	}
 	for (ind in p1.individuals) {
-		pos = sample(seqLen(length(good)), size=1);
+		pos = good[sample(seqLen(nrow(good)), size=1),];
+		assert(p1.spatialMapValue('habitat', pos) > EPS);
 		ind.setSpatialPosition(
-			c(good_x[pos], good_y[pos])
-			+ rnorm(2, sd=SIGMA/10)
+			pos
+			+ rnorm(2, sd=SIGMA/20)
 		);
 	}
 }
 
-reproduction() {
+2: late() {
+	// update spatial map
+	if (RASTER_NUM > 0) {
+		a = (sim.generation - RASTER_SWITCH_TIMES[RASTER_NUM - 1])/ (RASTER_SWITCH_TIMES[RASTER_NUM] - RASTER_SWITCH_TIMES[RASTER_NUM - 1]);
+		for (p in sim.subpopulations) {
+			p.defineSpatialMap('habitat', 'xy',
+				(1-a) * LAST_HABITAT.floatG + a * NEXT_HABITAT.floatG,
+				valueRange=c(0.0, 1.0), colors=c("#000000", "#FFFFFF"));
+		}
+	}
+}
+
+reproduction(p1) {
 	individual.tag = 0;
 	// SHOULD MATE CHOICE COME BEFORE DISPERSAL??
 	mate = i1.drawByStrength(individual);
@@ -58,11 +117,12 @@ reproduction() {
 		for (k in seqLen(rpois(1, LAMBDA))) {
 			loc = individual.spatialPosition;
 			if (runif(1) < P_D) {
-				// move around but stop in good habitat
-				while (runif(1) * MEAN_HOPS < 1) {
-					loc = loc + rnorm(2, mean=0, sd=SIGMA / sqrt(MEAN_HOPS));
-					if (p1.spatialMapValue('habitat', loc) > 0)
-						break;
+				num_hops = rgeom(1, 1/MEAN_HOPS);
+				for (k in seqLen(num_hops)) {
+					next_loc = loc + rnorm(2, mean=0, sd=SIGMA / sqrt(MEAN_HOPS));
+					if (runif(1) < p1.spatialMapValue('suitability', next_loc)) {
+						loc = next_loc;
+					}
 				}
 			}
 			if (p1.pointInBounds(loc)) {
@@ -99,6 +159,3 @@ late() {
 	if (p1.individualCount == 0 | p1.individualCount > MAX_SIZE) stop("Stopping: " + p1.individualCount + " individuals.");
 }
 
-2000 late() {
-	catn("Done!");
-}

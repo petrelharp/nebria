@@ -1,3 +1,12 @@
+# Jun 10 2021
+
+- subdivide pixels into 5x5 and set 24/25th of the pixels to zero
+- make probability of moving to a new spot equal to suitability map
+- make them not stop at original habiat
+- goal is to identify refugia and learn migration rates
+- interpolate linearly between time points
+- with each map at the midway of their time points
+
 # From 29 April 2021
 
 Peter, proposal:
