@@ -126,9 +126,9 @@ reproduction(p1) {
 			num_hops = 0;
 			tries = 0;
 			if (runif(1) < P_D) {
-				current = p1.spatialMapValue('suitability', loc);
 				k = rgeom(1, 1/MEAN_HOPS);
 				while (num_hops < k & tries < 1000) {
+                    current = p1.spatialMapValue('suitability', loc);
 					next_loc = loc + rnorm(2, mean=0, sd=SIGMA / sqrt(MEAN_HOPS));
 					if (runif(1) * current < p1.spatialMapValue('suitability', next_loc)) {
 						loc = next_loc;

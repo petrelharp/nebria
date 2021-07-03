@@ -82,6 +82,7 @@ small_box <- SpatialPolygons(list(Polygons(list(
 
 fn <- "geo_only_suitability"
 x <- crop(raster(paste0(fn, ".tif")), small_box)
+writeRaster(x, file.path(outdir, paste0(fn, ".tif")))
 png::writePNG(as.matrix(x), file.path(outdir, paste0(fn, ".png")), dpi=24)
 
 for (k in seq_along(rasters)) {
