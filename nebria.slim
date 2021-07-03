@@ -8,21 +8,23 @@ initialize() {
 	initializeRecombinationRate(1e-8);
 	
 	defineConstant("P_D", 0.2); // dispersal probability
-	defineConstant("MEAN_HOPS", 200); // mean number of dispersal hops
-	defineConstant("SIGMA", 0.1); // dispersal distance
+	defineConstant("MEAN_HOPS", 20); // mean number of dispersal hops
+	defineConstant("SIGMA", 0.01); // dispersal distance
 	defineConstant("MAP_RES", 0.01); // resolution
 	defineConstant("A", MAP_RES * MAP_RES);
 	defineConstant("LAMBDA", 3.0);  // mean fecundity
-	defineConstant("K", 5 / A);  // mean density per unit area
+	defineConstant("K", 20 / A);  // mean density per unit area
 	defineConstant("EPS", 0.01); // relative 'density' in bad habitat
 	defineConstant("NUM_INIT", 100); // number of initial populations
 	defineConstant("MAX_SIZE", 1e5);
-	defineConstant("NUM_GENS", 200);
+	defineConstant("NUM_GENS", 2000);
 	defineGlobal("TOTAL", 0);
+	
+	defineConstant("DEBUG", T);
 	
 	// note that LH0_4 looks like today (but lower-res)
 	defineGlobal("RASTERS",  c("HS15_17.png", "BA13_15.png", "EH8_12.png", "MH4_8.png", "LH0_4.png", "current.png"));
-	STEPSIZE=100; // years per generation (to make debugging go faster)
+	STEPSIZE=10; // years per generation (to make debugging go faster)
 	// the habitat is entirely RASTER[k] at RASTER_SWITCH_TIMES[k]
 	defineGlobal("RASTER_SWITCH_TIMES", asInteger(NUM_GENS - c(16, 14, 10, 6, 2, 0) * 1000 / STEPSIZE));
 	defineGlobal("RASTER_NUM", min(which(RASTER_SWITCH_TIMES > 0)));
@@ -56,7 +58,7 @@ s99 2000 late() {
 
 1 late() {
 	// FOR DEBUGGING: to see an extra map
-	sim.addSubpop("p2", 1);
+	if (DEBUG) sim.addSubpop("p2", 1);
 }
 
 1 late() {
@@ -94,6 +96,11 @@ s99 2000 late() {
 			pos
 			+ rnorm(2, sd=SIGMA/20)
 		);
+		if (DEBUG) {
+			for (key in c("num_hops", "num_hop_tries", "children")) {
+				ind.setValue(key, 0);
+			}
+		}		
 	}
 }
 
@@ -116,19 +123,31 @@ reproduction(p1) {
 	if (length(mate) > 0) {
 		for (k in seqLen(rpois(1, LAMBDA))) {
 			loc = individual.spatialPosition;
+			num_hops = 0;
+			tries = 0;
 			if (runif(1) < P_D) {
-				num_hops = rgeom(1, 1/MEAN_HOPS);
-				for (k in seqLen(num_hops)) {
+				current = p1.spatialMapValue('suitability', loc);
+				k = rgeom(1, 1/MEAN_HOPS);
+				while (num_hops < k & tries < 1000) {
 					next_loc = loc + rnorm(2, mean=0, sd=SIGMA / sqrt(MEAN_HOPS));
-					if (runif(1) < p1.spatialMapValue('suitability', next_loc)) {
+					if (runif(1) * current < p1.spatialMapValue('suitability', next_loc)) {
 						loc = next_loc;
+						num_hops = num_hops + 1;
 					}
+					tries = tries + 1;
 				}
 			}
 			if (p1.pointInBounds(loc)) {
 				individual.tag = individual.tag + 1;
 				child = subpop.addCrossed(individual, subpop.sampleIndividuals(1));
 				child.setSpatialPosition(loc);
+				if (DEBUG) {
+					child.setValue("num_hops", num_hops);
+					child.setValue("num_hop_tries", tries);
+					child.setValue("children", 0);
+					individual.setValue("children", individual.getValue("children") + 1);
+					mate.setValue("children", mate.getValue("children") + 1);
+				}
 			}
 		}
 	}
@@ -150,12 +169,27 @@ late() {
 }
 
 2: early() {
-	catn("Generation: " + sim.generation + " early: " + p1.individualCount);
+	cat("Generation: " + sim.generation + " early: " + p1.individualCount);
+	if (DEBUG) {
+		inds = p1.individuals;
+		hops = inds.getValue('num_hops');
+		cat(" mean_hops: " + mean(hops[hops > 0]) + " max_tries: " + max(inds.getValue('num_hop_tries')));
+		cat(" prop_dispersers: " + mean(hops > 0));
+		cat(" mean_children: " + mean(inds.getValue('children')) + " sd_children: " + sd(inds.getValue('children')));
+	}
+	catn("");
 	if (p1.individualCount == 0 | p1.individualCount > MAX_SIZE) stop("Stopping: " + N + " individuals.");
 }
 
 1: late() {
-	catn("Generation: " + sim.generation + " late: " + p1.individualCount);
+	cat("Generation: " + sim.generation + "  late: " + p1.individualCount);
+	if (DEBUG) {
+		inds = p1.individuals;
+		hops = inds.getValue('num_hops');
+		cat(" mean_hops: " + mean(hops[hops > 0]) + " max_tries: " + max(inds.getValue('num_hop_tries')));
+		cat(" prop_dispersers: " + mean(hops > 0));
+	}
+	catn("");
 	if (p1.individualCount == 0 | p1.individualCount > MAX_SIZE) stop("Stopping: " + p1.individualCount + " individuals.");
 }
 
