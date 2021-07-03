@@ -103,7 +103,6 @@ pdf(file="example_dispersal.pdf", width=8, height=8, pointsize=10)
     for (path in paths) {
         plot_path(path)
     }
-    legend("topleft", pch=1, cex=5, legend="good patch")
     scalebar(type='bar', lonlat=TRUE, below='kilometers')
 dev.off()
 

@@ -130,7 +130,7 @@ reproduction(p1) {
 				while (num_hops < k & tries < 1000) {
                     current = p1.spatialMapValue('suitability', loc);
 					next_loc = loc + rnorm(2, mean=0, sd=SIGMA / sqrt(MEAN_HOPS));
-					if (runif(1) * current < p1.spatialMapValue('suitability', next_loc)) {
+					if (runif(1) * current <= p1.spatialMapValue('suitability', next_loc)) {
 						loc = next_loc;
 						num_hops = num_hops + 1;
 					}
