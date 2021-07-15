@@ -1,3 +1,16 @@
+# Jul 15
+
+- make dispersal depend on density
+- make some patches more than one pixel
+- survivorship maybe 10-25%, so like half of adults dispersing
+- note replacement rate is 2 offspring/female
+- since 4% of habitat is good, no need to bias dispersal towards good places,
+    since should have >= 1 surviving dispersers per patch
+- effective migration rate can't be much lower than 1 per gen because they're not super inbred
+- include glacier in habitat raster (and also dispersal rasters?)
+- should differentiate suitability from dispersal rasters
+- glacier was only longest-ago time?
+
 # Jun 10 2021
 
 - subdivide pixels into 5x5 and set 24/25th of the pixels to zero
