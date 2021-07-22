@@ -1,26 +1,27 @@
 initialize() {
 	initializeSLiMModelType("nonWF");
 	initializeSLiMOptions(dimensionality="xy");
+	initializeSex("A");
 	initializeMutationRate(1e-7);
 	initializeMutationType("m1", 0.5, "f", 0.0);
 	initializeGenomicElementType("g1", m1, 1.0);
 	initializeGenomicElement(g1, 0, 99999);
 	initializeRecombinationRate(1e-8);
 	
-	defineConstant("P_D", 0.2); // dispersal probability
+	defineConstant("P_D", 0.1); // dispersal probability
 	defineConstant("MEAN_HOPS", 20); // mean number of dispersal hops
 	defineConstant("SIGMA", 0.01); // dispersal distance
 	defineConstant("MAP_RES", 0.01); // resolution
 	defineConstant("A", MAP_RES * MAP_RES);
-	defineConstant("LAMBDA", 3.0);  // mean fecundity
+	defineConstant("LAMBDA", 15.0);  // mean fecundity
 	defineConstant("K", 20 / A);  // mean density per unit area
 	defineConstant("EPS", 0.01); // relative 'density' in bad habitat
-	defineConstant("NUM_INIT", 100); // number of initial populations
+	defineConstant("PROP_INIT", 0.1); // proportion of initially occupied patches
 	defineConstant("MAX_SIZE", 1e5);
 	defineConstant("NUM_GENS", 2000);
 	defineGlobal("TOTAL", 0);
 	
-	defineConstant("DEBUG", T);
+	defineConstant("DEBUG", F);
 	
 	// note that LH0_4 looks like today (but lower-res)
 	defineGlobal("RASTERS",  c("HS15_17.png", "BA13_15.png", "EH8_12.png", "MH4_8.png", "LH0_4.png", "current.png"));
@@ -67,40 +68,43 @@ s99 2000 late() {
 	width = habitat.width * MAP_RES;
 	height = habitat.height * MAP_RES;
 	num_patches = sum(habitat.floatG > EPS);
-	N = asInteger(K * NUM_INIT * A);
+	num_init = asInteger(PROP_INIT * num_patches);
+	N = asInteger(K * num_init * A);
 	if (N > MAX_SIZE) stop("Too many individuals: " + N);
 	sim.addSubpop("p1", N);
 	p1.setSpatialBounds(c(0.0, 0.0, width, height));
 	cat("Setting up a population with " + N + " individuals");
 	cat(" and spatial bounds of " + paste(p1.spatialBounds));
 	catn(" and " + num_patches + " patches of good habitat.");
-
+	
 	for (p in sim.subpopulations) {
 		p.defineSpatialMap('habitat', 'xy', habitat.floatG,
 			valueRange=c(0.0, 1.0), colors=c("#000000", "#FFFFFF"));
 		p.defineSpatialMap('suitability', 'xy', suitability.floatK,
 			valueRange=c(0.0, 1.0), colors=c("#000000", "#FFFFFF"));
 	}
-	good = matrix(rep(-1.0, NUM_INIT*2), nrow=NUM_INIT);
-	for (k in seqLen(NUM_INIT)) {
+	good = matrix(rep(-1.0, num_init*2), nrow=num_init);
+	for (k in seqLen(num_init)) {
 		pos = p1.pointUniform();
 		while (p1.spatialMapValue('habitat', pos) < EPS) {
-			pos = p1.pointUniform();			
+			pos = p1.pointUniform();
 		}
 		good[k,] = pos;
 	}
-	for (ind in p1.individuals) {
+	// need to randomize order since the females are the first half of the vector
+	for (k in sample(seqLen(p1.individualCount), p1.individualCount)) {
+		ind = p1.individuals[k];
 		pos = good[sample(seqLen(nrow(good)), size=1),];
 		assert(p1.spatialMapValue('habitat', pos) > EPS);
 		ind.setSpatialPosition(
 			pos
 			+ rnorm(2, sd=SIGMA/20)
-		);
+			);
 		if (DEBUG) {
-			for (key in c("num_hops", "num_hop_tries", "children")) {
+			for (key in c("num_hops", "num_hop_tries", "children", "distance")) {
 				ind.setValue(key, 0);
 			}
-		}		
+		}
 	}
 }
 
@@ -116,37 +120,45 @@ s99 2000 late() {
 	}
 }
 
-reproduction(p1) {
+reproduction(p1, "F") {
 	individual.tag = 0;
 	// SHOULD MATE CHOICE COME BEFORE DISPERSAL??
 	mate = i1.drawByStrength(individual);
-	if (length(mate) > 0) {
-		for (k in seqLen(rpois(1, LAMBDA))) {
-			loc = individual.spatialPosition;
-			num_hops = 0;
-			tries = 0;
-			if (runif(1) < P_D) {
-				k = rgeom(1, 1/MEAN_HOPS);
-				while (num_hops < k & tries < 1000) {
-                    current = p1.spatialMapValue('suitability', loc);
-					next_loc = loc + rnorm(2, mean=0, sd=SIGMA / sqrt(MEAN_HOPS));
-					if (runif(1) * current <= p1.spatialMapValue('suitability', next_loc)) {
-						loc = next_loc;
-						num_hops = num_hops + 1;
+	if ((length(mate) > 0)) {
+		for (tries in 1:10) {
+			if (mate.sex == "M") break;
+			mate = i1.drawByStrength(individual);
+		}
+		if (mate.sex == "M") {
+			for (k in seqLen(rpois(1, LAMBDA))) {
+				loc = individual.spatialPosition;
+				num_hops = 0;
+				tries = 0;
+				init_loc = loc;
+				if (runif(1) < P_D) {
+					k = rgeom(1, 1/MEAN_HOPS);
+					while (num_hops < k & tries < 1000) {
+						current = p1.spatialMapValue('suitability', loc);
+						next_loc = loc + rnorm(2, mean=0, sd=SIGMA / sqrt(MEAN_HOPS));
+						if (runif(1) * current <= p1.spatialMapValue('suitability', next_loc)) {
+							loc = next_loc;
+							num_hops = num_hops + 1;
+						}
+						tries = tries + 1;
 					}
-					tries = tries + 1;
 				}
-			}
-			if (p1.pointInBounds(loc)) {
-				individual.tag = individual.tag + 1;
-				child = subpop.addCrossed(individual, subpop.sampleIndividuals(1));
-				child.setSpatialPosition(loc);
-				if (DEBUG) {
-					child.setValue("num_hops", num_hops);
-					child.setValue("num_hop_tries", tries);
-					child.setValue("children", 0);
-					individual.setValue("children", individual.getValue("children") + 1);
-					mate.setValue("children", mate.getValue("children") + 1);
+				if (p1.pointInBounds(loc)) {
+					individual.tag = individual.tag + 1;
+					child = subpop.addCrossed(individual, mate);
+					child.setSpatialPosition(loc);
+					if (DEBUG) {
+						child.setValue("num_hops", num_hops);
+						child.setValue("num_hop_tries", tries);
+						child.setValue("children", 0);
+						child.setValue("distance", sqrt(sum((loc - init_loc)^2)));
+						individual.setValue("children", individual.getValue("children") + 1);
+						mate.setValue("children", mate.getValue("children") + 1);
+					}
 				}
 			}
 		}
@@ -170,26 +182,27 @@ late() {
 
 2: early() {
 	cat("Generation: " + sim.generation + " early: " + p1.individualCount);
+	if (p1.individualCount == 0 | p1.individualCount > MAX_SIZE) stop("Stopping: " + p1.individualCount + " individuals.");
 	if (DEBUG) {
 		inds = p1.individuals;
 		hops = inds.getValue('num_hops');
 		cat(" mean_hops: " + mean(hops[hops > 0]) + " max_tries: " + max(inds.getValue('num_hop_tries')));
-		cat(" prop_dispersers: " + mean(hops > 0));
+		cat(" prop_dispersers: " + mean(inds.getValue('distance') > sqrt(2) * MAP_RES));
+		cat(" mean_distance: " + mean(inds.getValue('distance')) + " sd_distance: " + sd(inds.getValue('distance')));
 		cat(" mean_children: " + mean(inds.getValue('children')) + " sd_children: " + sd(inds.getValue('children')));
 	}
 	catn("");
-	if (p1.individualCount == 0 | p1.individualCount > MAX_SIZE) stop("Stopping: " + N + " individuals.");
 }
 
 1: late() {
 	cat("Generation: " + sim.generation + "  late: " + p1.individualCount);
+	if (p1.individualCount == 0 | p1.individualCount > MAX_SIZE) stop("Stopping: " + p1.individualCount + " individuals.");
 	if (DEBUG) {
 		inds = p1.individuals;
 		hops = inds.getValue('num_hops');
 		cat(" mean_hops: " + mean(hops[hops > 0]) + " max_tries: " + max(inds.getValue('num_hop_tries')));
-		cat(" prop_dispersers: " + mean(hops > 0));
+		cat(" prop_dispersers: " + mean(inds.getValue('distance') > sqrt(2) * MAP_RES));
+		cat(" mean_distance: " + mean(inds.getValue('distance')) + " sd_distance: " + sd(inds.getValue('distance')));
 	}
 	catn("");
-	if (p1.individualCount == 0 | p1.individualCount > MAX_SIZE) stop("Stopping: " + p1.individualCount + " individuals.");
 }
-

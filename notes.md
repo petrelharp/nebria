@@ -1,6 +1,37 @@
+# Jul 20:
+
+Statistics:
+
+- mean heterozygosity
+- diversity by pop
+- divergence between pops (or, Fst?) against distance
+- AFS by pop without singletons
+- PCA
+
+Notes:
+
+- use fact that the big area north of the San Joaquin was surveyed a bunch but none are found there
+- dispersal over snow (any direction, as adults) and juveniles (in streams)
+- maybe not long-distance dispersal because they are flightless (although: washed downriver over 1km)
+
+To-do:
+
+- Yi-Ming to send map & numbers of samples
+- pre-compute spatial map of density?
+- make each patch suitability fluctuate with time on a hundreds - 500 years time scale
+
+Timing (rough!):
+
+- 1 sec/generation with 5,000 adults and 35,000 juvys; scaling linearly; that's 5.5 hours for going back to 20Kya
+
+From Yi-Ming:
+
+- `1000M_plus.tif`: It's supposed to be a "geographic-only" raster with just slope but I have tried many different combinations of many geographic features and none of them improved the map (either similar or have less suitable habitat than the original one). Sean and I thought maybe we can try the blank raster with all pixels above elevation 1000 to be 1, and below 1000 to be NA. I don't know this is the best way to do this or not, so please let me know if you have different idea.
+- `CCSM4_glm_boundary`: The LGM suitability map plus the glacier boundary. I merged the two rasters so now the values 0-1 are suitability and value 2 is the boundary. I am not sure this is the best format for you, if you need different format (like separated rasters for suitability and glacier boundary), please let me know, too. 
+
 # Jul 15
 
-- make dispersal depend on density
+- make dispersal depend on density (maybe not! shouldn't matter much)
 - make some patches more than one pixel
 - survivorship maybe 10-25%, so like half of adults dispersing
 - note replacement rate is 2 offspring/female
@@ -69,13 +100,13 @@ Peter, proposal:
 
 # From 12 April 2021
 
-live above 2900m in vertical seeps
+- live above 2900m in vertical seeps
 
-100s to 1000s per site;
-0.1 to 0.25 of good sites are occupied;
-roughly one site per sq mile in good habitat;
-roughly hundreds of square miles of good habitat
+- 100s to 1000s per site;
+- 0.1 to 0.25 of good sites are occupied;
+- roughly one site per sq mile in good habitat;
+- roughly hundreds of square miles of good habitat
 
-one generation = one year
+- one generation = one year
 
-see Mol Ecol paper
+- see Mol Ecol paper

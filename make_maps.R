@@ -1,4 +1,5 @@
 library(raster)
+library(sp)
 library(png)
 
 # proportion of pixels which should not be zeroed out
