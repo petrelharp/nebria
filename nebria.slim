@@ -2,7 +2,8 @@ initialize() {
 	initializeSLiMModelType("nonWF");
 	initializeSLiMOptions(dimensionality="xy");
 	initializeSex("A");
-	initializeMutationRate(1e-7);
+	initializeTreeSeq();
+	initializeMutationRate(0.0);
 	initializeMutationType("m1", 0.5, "f", 0.0);
 	initializeGenomicElementType("g1", m1, 1.0);
 	initializeGenomicElement(g1, 0, 99999);
@@ -10,22 +11,24 @@ initialize() {
 	
 	defineConstant("P_D", 0.1); // dispersal probability
 	defineConstant("MEAN_HOPS", 20); // mean number of dispersal hops
-	defineConstant("SIGMA", 0.01); // dispersal distance
-	defineConstant("MAP_RES", 0.01); // resolution
-	defineConstant("A", MAP_RES * MAP_RES);
+	defineConstant("SIGMA", 1.0); // dispersal distance, in km (TOO BIG)
+	defineConstant("MAP_RES_X", 0.742); // resolution in km (see make_maps.R)
+	defineConstant("MAP_RES_Y", 0.925); // resolution in km (see make_maps.R)
+	defineConstant("MAP_RES", max(MAP_RES_X, MAP_RES_Y)); // resolution
 	defineConstant("LAMBDA", 15.0);  // mean fecundity
-	defineConstant("K", 20 / A);  // mean density per unit area
+	defineConstant("K", 20 / (MAP_RES_X * MAP_RES_Y));  // mean density per unit area
 	defineConstant("EPS", 0.01); // relative 'density' in bad habitat
 	defineConstant("PROP_INIT", 0.1); // proportion of initially occupied patches
+	defineConstant("HABITAT_SIGMA", 1/sqrt(200)); // SD of how much habitat quality changes per year
 	defineConstant("MAX_SIZE", 1e5);
 	defineConstant("NUM_GENS", 2000);
 	defineGlobal("TOTAL", 0);
-	
-	defineConstant("DEBUG", F);
+
+	if (!exists("DEBUG")) defineConstant("DEBUG", T);
+	STEPSIZE = 100; // years per generation (to make debugging go faster)
 	
 	// note that LH0_4 looks like today (but lower-res)
 	defineGlobal("RASTERS",  c("HS15_17.png", "BA13_15.png", "EH8_12.png", "MH4_8.png", "LH0_4.png", "current.png"));
-	STEPSIZE=10; // years per generation (to make debugging go faster)
 	// the habitat is entirely RASTER[k] at RASTER_SWITCH_TIMES[k]
 	defineGlobal("RASTER_SWITCH_TIMES", asInteger(NUM_GENS - c(16, 14, 10, 6, 2, 0) * 1000 / STEPSIZE));
 	defineGlobal("RASTER_NUM", min(which(RASTER_SWITCH_TIMES > 0)));
@@ -34,7 +37,7 @@ initialize() {
 	
 	// spatial interactions
 	initializeInteractionType(1, "xy", reciprocal=T, maxDistance=2 * MAP_RES);
-	i1.setInteractionFunction("n", 1/(2 * PI * A), MAP_RES);
+	i1.setInteractionFunction("n", 1/(2 * PI * MAP_RES * MAP_RES), MAP_RES);
 }
 
 s1 999 late() {
@@ -47,13 +50,15 @@ s1 999 late() {
 
 s99 2000 late() {
 	catn("Done!");
+	sim.treeSeqOutput("nebria_" + getSeed() + ".trees");
 	sim.simulationFinished();
 }
 
 1 late() {
 	this_num = max(0, RASTER_NUM - 1);
 	catn("Starting with raster" + RASTERS[this_num] + "(" + this_num + ") and interpolating to " + RASTERS[RASTER_NUM] + "(" + RASTER_NUM + ").");
-	sim.rescheduleScriptBlock(s1, generations=RASTER_SWITCH_TIMES[RASTER_SWITCH_TIMES > 0 & RASTER_SWITCH_TIMES < NUM_GENS]);
+	switch_gens = RASTER_SWITCH_TIMES[RASTER_SWITCH_TIMES > 0 & RASTER_SWITCH_TIMES < NUM_GENS];
+	if (length(switch_gens) > 0) sim.rescheduleScriptBlock(s1, generations=switch_gens);
 	sim.rescheduleScriptBlock(s99, generations=NUM_GENS);
 }
 
@@ -65,11 +70,11 @@ s99 2000 late() {
 1 late() {
 	habitat = LAST_HABITAT;
 	suitability = Image("geo_only_suitability.png");
-	width = habitat.width * MAP_RES;
-	height = habitat.height * MAP_RES;
+	width = habitat.width * MAP_RES_X;
+	height = habitat.height * MAP_RES_Y;
 	num_patches = sum(habitat.floatG > EPS);
 	num_init = asInteger(PROP_INIT * num_patches);
-	N = asInteger(K * num_init * A);
+	N = asInteger(K * num_init * MAP_RES_X * MAP_RES_Y);
 	if (N > MAX_SIZE) stop("Too many individuals: " + N);
 	sim.addSubpop("p1", N);
 	p1.setSpatialBounds(c(0.0, 0.0, width, height));
@@ -77,6 +82,7 @@ s99 2000 late() {
 	cat(" and spatial bounds of " + paste(p1.spatialBounds));
 	catn(" and " + num_patches + " patches of good habitat.");
 	
+	defineGlobal("DH", rep(1.0, length(habitat.floatG)));
 	for (p in sim.subpopulations) {
 		p.defineSpatialMap('habitat', 'xy', habitat.floatG,
 			valueRange=c(0.0, 1.0), colors=c("#000000", "#FFFFFF"));
@@ -112,11 +118,14 @@ s99 2000 late() {
 	// update spatial map
 	if (RASTER_NUM > 0) {
 		a = (sim.generation - RASTER_SWITCH_TIMES[RASTER_NUM - 1])/ (RASTER_SWITCH_TIMES[RASTER_NUM] - RASTER_SWITCH_TIMES[RASTER_NUM - 1]);
-		for (p in sim.subpopulations) {
-			p.defineSpatialMap('habitat', 'xy',
-				(1-a) * LAST_HABITAT.floatG + a * NEXT_HABITAT.floatG,
-				valueRange=c(0.0, 1.0), colors=c("#000000", "#FFFFFF"));
-		}
+	} else {
+		a = 1.0;
+	}
+	for (p in sim.subpopulations) {
+		defineGlobal("DH", 1 - abs(1 - (abs(DH + rnorm(length(DH), 0, HABITAT_SIGMA)) % 2)));
+		h = ( (1-a) * LAST_HABITAT.floatG + a * NEXT_HABITAT.floatG ) * DH;
+		p.defineSpatialMap('habitat', 'xy', h,
+			valueRange=c(0.0, 1.0), colors=c("#000000", "#FFFFFF"));
 	}
 }
 

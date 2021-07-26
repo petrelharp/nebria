@@ -16,6 +16,7 @@ Notes:
 
 To-do:
 
+- make Yosemite subset
 - Yi-Ming to send map & numbers of samples
 - pre-compute spatial map of density?
 - make each patch suitability fluctuate with time on a hundreds - 500 years time scale
