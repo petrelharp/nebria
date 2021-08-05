@@ -82,10 +82,10 @@ xy_to_slim <- function (xy) {
                     ))
     horiz_dist <- pointDistance(triangle_point, xy, lonlat=TRUE) / 1000
     vert_dist <- pointDistance(ll_xy, triangle_point, lonlat=TRUE) / 1000
-    return(data.frame(x=horiz_dist, y=vert_dist))
+    return(data.frame(slim_x=horiz_dist, slim_y=vert_dist))
 }
 sample_locs <- cbind(sample_locs, xy_to_slim(samples))
-write.csv(sample_locs, "sample_locs.csv")
+write.csv(sample_locs, "sample_locs.csv", row.names=FALSE)
 
 # cut out the white mountains
 wm_box <- SpatialPolygons(list(Polygons(list(

@@ -6,12 +6,12 @@ initialize() {
 	initializeMutationRate(0.0);
 	initializeMutationType("m1", 0.5, "f", 0.0);
 	initializeGenomicElementType("g1", m1, 1.0);
-	initializeGenomicElement(g1, 0, 99999);
+	initializeGenomicElement(g1, 0, 99999); 
 	initializeRecombinationRate(1e-8);
 	
 	defineConstant("P_D", 0.1); // dispersal probability
 	defineConstant("MEAN_HOPS", 20); // mean number of dispersal hops
-	defineConstant("SIGMA", 1.0); // dispersal distance, in km (TOO BIG)
+	defineConstant("DISPERSAL_SIGMA", 0.1); // dispersal distance, in km
 	defineConstant("MAP_RES_X", 0.742); // resolution in km (see make_maps.R)
 	defineConstant("MAP_RES_Y", 0.925); // resolution in km (see make_maps.R)
 	defineConstant("MAP_RES", max(MAP_RES_X, MAP_RES_Y)); // resolution
@@ -20,12 +20,13 @@ initialize() {
 	defineConstant("EPS", 0.01); // relative 'density' in bad habitat
 	defineConstant("PROP_INIT", 0.1); // proportion of initially occupied patches
 	defineConstant("HABITAT_SIGMA", 1/sqrt(200)); // SD of how much habitat quality changes per year
-	defineConstant("MAX_SIZE", 1e5);
-	defineConstant("NUM_GENS", 2000);
+	defineConstant("MAX_SIZE", 2e5);
+	defineConstant("NUM_GENS", 100);
 	defineGlobal("TOTAL", 0);
 
 	if (!exists("DEBUG")) defineConstant("DEBUG", T);
 	STEPSIZE = 100; // years per generation (to make debugging go faster)
+	defineConstant("SIGMA", DISPERSAL_SIGMA * sqrt(STEPSIZE));
 	
 	// note that LH0_4 looks like today (but lower-res)
 	defineGlobal("RASTERS",  c("HS15_17.png", "BA13_15.png", "EH8_12.png", "MH4_8.png", "LH0_4.png", "current.png"));
@@ -77,18 +78,19 @@ s99 2000 late() {
 	N = asInteger(K * num_init * MAP_RES_X * MAP_RES_Y);
 	if (N > MAX_SIZE) stop("Too many individuals: " + N);
 	sim.addSubpop("p1", N);
-	p1.setSpatialBounds(c(0.0, 0.0, width, height));
-	cat("Setting up a population with " + N + " individuals");
-	cat(" and spatial bounds of " + paste(p1.spatialBounds));
-	catn(" and " + num_patches + " patches of good habitat.");
 	
 	defineGlobal("DH", rep(1.0, length(habitat.floatG)));
 	for (p in sim.subpopulations) {
+		p.setSpatialBounds(c(0.0, 0.0, width, height));
 		p.defineSpatialMap('habitat', 'xy', habitat.floatG,
 			valueRange=c(0.0, 1.0), colors=c("#000000", "#FFFFFF"));
 		p.defineSpatialMap('suitability', 'xy', suitability.floatK,
 			valueRange=c(0.0, 1.0), colors=c("#000000", "#FFFFFF"));
 	}
+	cat("Setting up a population with " + N + " individuals");
+	cat(" and spatial bounds of " + paste(p1.spatialBounds));
+	catn(" and " + num_patches + " patches of good habitat.");
+	
 	good = matrix(rep(-1.0, num_init*2), nrow=num_init);
 	for (k in seqLen(num_init)) {
 		pos = p1.pointUniform();
