@@ -1,3 +1,30 @@
+# Aug 19:
+
+- Fst between distant pops is like 0.5, between nearby is like 0.03.
+- a few hundred mis-called alleles per individual
+- many more mis-called homs that are really hets
+- next meeting: discuss manuscript
+
+
+# Jul 29:
+
+- each sampling location is a collection of nearby locations,
+    but a few of these (Lucy pass, Seldon pass, Paiute pass, ...) are a few km apart
+- some other sites are pretty close but separated by a ridge, for instance
+- Yi-Ming to send a sheet with the sub-sample locations (without duplicates)
+- maybe want to compute e.g. AFS for bigger regions to better group samples?
+- pay attention to occupancy of marginal pops
+- take snapshots every 1000 years or so
+- Yi-Ming: whole-genome including X: Fst is 0 to 0.36
+- genome size:
+    * VCF has 2M SNPs after removing alleles < 5%; with these it's 5M SNPs
+    * don't know the recombination rate
+    * has between 30 and 50 chromosomes
+    * 147 Mb genome
+- question: do we do LD thinning for comparison to sims?
+- do "population-specific Fst": (one pop) vs (everyone else) Fst
+- TODO: figure out stats like Fst that don't depend on singletons
+
 # Jul 20:
 
 Statistics:
