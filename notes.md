@@ -1,3 +1,9 @@
+# Aug 30
+
+- lower diversity in some peripheral regions of yosemite
+- sixty lakes and taboose pass lower dxy to neighbors - admixture/IBD
+- LD decays from 0.25 to 0.125 over like 10kb, then flattens out to varying levels
+
 # Aug 19:
 
 - Fst between distant pops is like 0.5, between nearby is like 0.03.

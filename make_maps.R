@@ -1,5 +1,6 @@
 library(raster)
 library(sp)
+library(sf)
 library(png)
 
 # proportion of pixels which should not be zeroed out
@@ -26,6 +27,10 @@ raster::plot(x)
 points(samples)
 dev.off()
 png::writePNG(as.matrix(x), paste0(fn, ".png"), dpi=24)
+
+## very big
+# glacier <- sf::read_sf("data/glacier_boundary")
+
 
 # Project all to align with "current", which is a factor of 5
 tifs <- c("current.tif", "LH0_4.tif", "MH4_8.tif", "EH8_12.tif", "BA13_15.tif", "HS15_17.tif")
@@ -187,4 +192,5 @@ for (k in seq_along(rasters)) {
     am <- array(c(xm, xmk, xm * 0.0), dim=c(dim(xm), 3))
     png::writePNG(am, file.path(outdir, paste0(fn, ".png")), dpi=24)
 }
+
 
