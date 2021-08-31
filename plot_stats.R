@@ -50,7 +50,7 @@ make_names = function (a, b) {
     )
 }
 
-pair_lines = st_sf(
+pair_stats = st_sf(
                pairs_data,
                row.names = make_names(
                     stats$short_name[match(pairs_data$loc1, stats$site_name)],
@@ -59,7 +59,7 @@ pair_lines = st_sf(
                geometry = lc_lines
 )
 
-pair_lines$distance = st_length(st_geometry(pair_lines))
+pair_stats$distance = st_length(st_geometry(pair_stats))
 
 
 ###
@@ -67,11 +67,12 @@ pair_lines$distance = st_length(st_geometry(pair_lines))
 
 north_pt = "conness"
 south_pt = "army"
-longest = st_geometry(pair_lines)[match("army_conness", rownames(pair_lines))]
+longest = st_geometry(pair_stats)[match("army_conness", rownames(pair_stats))]
 flat_coords = 3310
 perp_lines = st_nearest_points(st_transform(stats, flat_coords), st_transform(longest, flat_coords))
 perp_points = st_cast(perp_lines, "POINT")[2*seq_len(nrow(stats))]
-stats$pct = st_distance( perp_points, st_transform(stats[south_pt,], flat_coords) )
+stats$pct = as.vector(st_distance( perp_points, st_transform(stats[south_pt,], flat_coords) ))
+stats = stats[order(stats$pct),]
 
 # shows projections -- probably optional
 png(file=sprintf("%s.proj.png", basename), width=6.5*288, height=8*288, res=288)
@@ -102,7 +103,7 @@ ibdfile = sprintf("%s.ibd.png", basename)
 png(file=ibdfile, width=6.5*288, height=8*288, res=288)
 layout(1:2)
 for (vn in c("dxy", "Fst")) {
-    plot(pair_lines[["distance"]], pair_lines[[vn]], pch=20,
+    plot(pair_stats[["distance"]], pair_stats[[vn]], pch=20,
          ylab=vn,
          xlab="distance",
          main=basename
@@ -111,10 +112,28 @@ for (vn in c("dxy", "Fst")) {
 dev.off()
 
 
-k = 1
-ref = stats[k,]
-
-
-plot_setup() +
-    geom_sf(data=stats, mapping=aes(col=pct), cex=5, pch=20)
+pdf(file=sprintf("%s.dxy_by_pct.pdf", basename), width=6.5, height=15, pointsize=10)
+    yscale = 1.0 * max(pair_stats$dxy, na.rm=TRUE)
+    par(mar=c(5, 10, 3, 1)+.1)
+    plot(0, type='n',
+         xlim=range(stats$pct),
+         xlab='PCT distance [m]',
+         ylim=c(0, nrow(stats) * yscale), yaxt='n',
+         ylab='',
+         main="dxy"
+    )
+    axis(2, las=2, tick=FALSE,
+         at=(1:nrow(stats) - 0.5) * yscale,
+         labels=rownames(stats)
+    )
+    abline(h=(0:nrow(stats)) * yscale, lwd=2, col=adjustcolor('black', 0.5))
+    for (k in 1:nrow(stats)) {
+        ref = rownames(stats)[k]
+        ii = match(make_names(ref, rownames(stats)), rownames(pair_stats))
+        y = yscale * (k-1) + pair_stats$dxy[ii]
+        abline(h=y[k], lty=3, col=adjustcolor(k, 0.5))
+        lines(stats$pct, y, col=k, lty=k, type='b', pch=20)
+        points(stats$pct[k], y[k], pch="*", cex=5, col=k)
+    }
+dev.off()
 
