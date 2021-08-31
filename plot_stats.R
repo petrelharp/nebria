@@ -9,9 +9,11 @@ if (length(args) != 1) {
 basename = gsub(".trees$", "", args[1])
 
 library(png)
+library(tidyverse)
 library(sf)
 library(stars)
-library(tidyverse)
+
+source("data/mapping-fns.R", chdir=TRUE)
 
 ## too big
 # glacier = read_sf("data/glacier_boundary")
@@ -60,17 +62,36 @@ pair_lines = st_sf(
 pair_lines$distance = st_length(st_geometry(pair_lines))
 
 
-## Map setup
+###
+# project points onto the line between the furthest-apart points
 
-source("data/mapping-fns.R", chdir=TRUE)
+north_pt = "conness"
+south_pt = "army"
+longest = st_geometry(pair_lines)[match("army_conness", rownames(pair_lines))]
+flat_coords = 3310
+perp_lines = st_nearest_points(st_transform(stats, flat_coords), st_transform(longest, flat_coords))
+perp_points = st_cast(perp_lines, "POINT")[2*seq_len(nrow(stats))]
+stats$pct = st_distance( perp_points, st_transform(stats[south_pt,], flat_coords) )
+
+# shows projections -- probably optional
+png(file=sprintf("%s.proj.png", basename), width=6.5*288, height=8*288, res=288)
+    plot_setup() +
+        geom_sf(data=longest, col='blue', lwd=2) +
+        geom_sf(data=perp_lines, col='purple') +
+        geom_sf(data=perp_points, col='red', pch=20) +
+        geom_sf(data=locations, col='black', pch=20)
+dev.off()
+
 
 ###
 # Heterozygosity
 
-plot_setup() +
-    geom_sf(data=stats, mapping=aes(color=sim_pi), cex=6)
+png(file=sprintf("%s.het.png", basename), width=6*288, height=8*288, res=288)
 
+    plot_setup() +
+        geom_sf(data=stats, mapping=aes(color=sim_pi), cex=6)
 
+dev.off()
 
 
 ###
@@ -88,3 +109,12 @@ for (vn in c("dxy", "Fst")) {
     )
 }
 dev.off()
+
+
+k = 1
+ref = stats[k,]
+
+
+plot_setup() +
+    geom_sf(data=stats, mapping=aes(col=pct), cex=5, pch=20)
+

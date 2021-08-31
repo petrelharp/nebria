@@ -188,7 +188,7 @@ plt.savefig(f"{basename}.pi.pdf")
 
 pairs = pd.DataFrame(
             np.array(
-                [[a, b] for a in real_locs.index for b in real_locs.index if a < b]
+                [[a, b] for a in real_locs.index for b in real_locs.index if a <= b]
             ),
             columns=["loc1", "loc2"],
 )
