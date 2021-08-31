@@ -40,17 +40,6 @@ get_statelines <- function (x) {
     tigris::states(c("California", "Oregon"), cb=TRUE)
 }
 
-#' Get an elevation raster matching with a spatial object
-#' @param x The spatial object
-get_elev <- function (x, ...) {
-    dem <- read_stars(file.path(.mapping.thisdir, "srtm/srtm_12_04.tif"))
-    dem_list <- lapply(
-           list.files(file.path(.mapping.thisdir, "srtm"), "*.tif", full.names=TRUE),
-           read_stars
-    ) %>% lapply(st_crop, get_rect(x, ...))
-    return(dem_list)
-}
-
 #' Get elevation contours to overlay on a spatial object
 #' @param x The spatial object
 get_contours <- function (...) {
