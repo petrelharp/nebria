@@ -153,13 +153,13 @@ for k, r in enumerate(real_locs.itertuples()):
 
 
 # expected heterozygosity
-real_locs["sim_pi"] = np.nan
+real_locs["het"] = np.nan
 for k in range(real_locs.shape[0]):
     name = real_locs.index[k]
     samples = sample_sets[name]
     if len(samples) > 0:
         pi = ts.diversity(samples, mode='site')
-        real_locs.loc[real_locs.index[k], 'sim_pi'] = pi
+        real_locs.loc[real_locs.index[k], 'het'] = pi
 
 
 # write out text file
@@ -167,14 +167,14 @@ real_locs.to_csv(f"{basename}.stats.csv")
 
 
 # heterozygosity at all simulated locations
-sim_pi = ts.diversity([patches[tuple(xy)] for xy in patch_xy], mode='branch')
+het = ts.diversity([patches[tuple(xy)] for xy in patch_xy], mode='branch')
 
 fig, ax = plt.subplots(1, 1, figsize=(5, 6))
 ax.set_aspect('equal')
 ax.set_xlabel("eastings")
 ax.set_ylabel("northings")
 
-ax.scatter(patch_xy[:,0], patch_xy[:,1], s=sim_pi/10, marker="o",
+ax.scatter(patch_xy[:,0], patch_xy[:,1], s=het/10, marker="o",
         facecolors='none', edgecolors='blue',
         label="expected heterozygosity")
 ax.legend()

@@ -1,3 +1,14 @@
+# Sep 13:
+
+- note that when we compare to for instance pi, if it has a lot of local randomness
+    we should not compare individual sites to each other, but rather compare the
+    overall variance (or variance between neighbors)
+- so: don't pair up populations!!
+- estimate proportion of patches that are actually occupied in 60 lake basin
+- upper limit on total size: maybe 1e5 or 2e5 today: maybe 5e5 over all time?
+- stairwayplot got upper size limit of 120K at 100kya
+
+
 # Aug 30
 
 - lower diversity in some peripheral regions of yosemite

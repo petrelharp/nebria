@@ -2,8 +2,29 @@
 
 args = commandArgs(TRUE)
 
+usage = "
+Usage:
+    plot_stats.R (basename)
+
+Will read in the following files:
+ - sample_locs.csv : in this directory, at least needs
+    * site_name
+    * longitude
+    * latitude
+ - (basename).stats.csv : should be a CSV with the following columns (and possibly others):
+    * site_name:
+    * het: heterozygosity
+ - (basename).pairstats.csv: a CSV with columns:
+    * loc1: a name in 'site_name' from the stats file
+    * loc2: a name in 'site_name' from the stats file
+    * dxy: divergence
+
+For background maps, you'll also need the `data/` subdirectory.
+"
+
+
 if (length(args) != 1) {
-    stop("Usage: plot_stats.R (name of tree sequence)")
+    stop(usage)
 }
 
 basename = gsub(".trees$", "", args[1])
@@ -15,11 +36,11 @@ library(stars)
 
 source("data/mapping-fns.R", chdir=TRUE)
 
-## too big
-# glacier = read_sf("data/glacier_boundary")
-suitability = read_stars("geo_only_suitability.tif")
+sample_locs = read.csv("sample_locs.csv")
 
 stats_data = read.csv(sprintf("%s.stats.csv", basename))
+stats_data = merge(sample_locs, stats_data, all=TRUE)
+
 pairs_data = read.csv(sprintf("%s.pairstats.csv", basename))
 pairs_data = pairs_data[,setdiff(colnames(pairs_data), "X")]
 
@@ -90,7 +111,7 @@ dev.off()
 png(file=sprintf("%s.het.png", basename), width=6*288, height=8*288, res=288)
 
     plot_setup() +
-        geom_sf(data=stats, mapping=aes(color=sim_pi), cex=6)
+        geom_sf(data=stats, mapping=aes(color=het), cex=6)
 
 dev.off()
 
