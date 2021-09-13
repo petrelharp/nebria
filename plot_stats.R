@@ -135,11 +135,11 @@ dev.off()
 
 pdf(file=sprintf("%s.dxy_by_pct.pdf", basename), width=6.5, height=15, pointsize=10)
     yscale = 1.0 * max(pair_stats$dxy, na.rm=TRUE)
-    par(mar=c(5, 10, 3, 1)+.1)
+    par(mar=c(5, 6, 3, 5)+.1)
     plot(0, type='n',
          xlim=range(stats$pct),
          xlab='PCT distance [m]',
-         ylim=c(0, nrow(stats) * yscale), yaxt='n',
+         ylim=c(0.75, nrow(stats)-0.75) * yscale, yaxt='n',
          ylab='',
          main="dxy"
     )
@@ -148,6 +148,13 @@ pdf(file=sprintf("%s.dxy_by_pct.pdf", basename), width=6.5, height=15, pointsize
          labels=rownames(stats)
     )
     abline(h=(0:nrow(stats)) * yscale, lwd=2, col=adjustcolor('black', 0.5))
+    axis(4, las=2, tick=TRUE,
+         at=(0:nrow(stats)) * yscale,
+         labels=sprintf(
+            "%0.1e",
+            (0:nrow(stats)) * yscale - 2 * rep(0:nrow(stats), each=2)[1:(nrow(stats)+1)] * yscale
+        )
+    )
     for (k in 1:nrow(stats)) {
         ref = rownames(stats)[k]
         ii = match(make_names(ref, rownames(stats)), rownames(pair_stats))
