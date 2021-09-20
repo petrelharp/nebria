@@ -1,40 +1,70 @@
-initialize() {
+nitialize() {
 	initializeSLiMModelType("nonWF");
 	initializeSLiMOptions(dimensionality="xy");
 	initializeSex("A");
 	initializeTreeSeq();
+	// these are default params that can be modified with -d at runtime
+    // or read in from "params.slim"
+	defaults = Dictionary(
+	    "P_D", 0.1, // dispersal probability
+	    "MEAN_HOPS", 20, // mean number of dispersal hops
+	    "DISPERSAL_SIGMA", 0.1, // dispersal distance, in km
+	    "MAP_RES_X", 0.742, // resolution in km (see make_maps.R)
+	    "MAP_RES_Y", 0.925, // resolution in km (see make_maps.R)
+	    "MAP_RES", max(MAP_RES_X, MAP_RES_Y), // resolution
+	    "LAMBDA", 15.0,  // mean fecundity
+	    "K", 20 / (MAP_RES_X * MAP_RES_Y),  // mean density per unit area
+	    "EPS", 0.01, // relative 'density' in bad habitat
+	    "PROP_INIT", 0.1, // proportion of initially occupied patches
+	    "HABITAT_SIGMA", 1/sqrt(200), // SD of how much habitat quality changes per year
+		"L", 1e6, // length of the genome
+        // the habitat is entirely RASTER[k] at RASTER_SWITCH_TIMES_AGO[k]
+        "RASTERS", c("HS15_17.png",
+                     "BA13_15.png",
+                     "EH8_12.png",
+                     "MH4_8.png",
+                     "LH0_4.png", // note that LH0_4 looks like today (but lower-res)
+                     "current.png"),
+	    "RASTER_SWITCH_TIMES_AGO", c(16, 14, 10, 6, 2, 0) * 1000, // converted to generations below
+        "DEBUG", T,
+        "STEPSIZE", 100,  // years per generation (to make debugging go faster)
+	    "MAX_SIZE", 2e5,
+	    "NUM_GENS", 100,
+		"OUTDIR", "."
+	);
+	if (fileExists("params.slim")) {
+		local_defaults = executeLambda(paste(c(readFile("params.slim"), ";"), sep=" "));
+		defaults.addKeysAndValuesFrom(local_defaults);
+	}
+	defaults.setValue("OUTPATH", OUTDIR + "/sim_" + getSeed() + ".trees");
+    
+	for (k in defaults.allKeys) {
+		if (!exists(k)) {
+			defineConstant(k, defaults.getValue(k));
+		} else {
+			defaults.setValue(k, executeLambda(paste(c(k, ";"), sep='')));
+		}
+	}
+	defineGlobal("params", defaults);
+
+	defineConstant("RASTER_SWITCH_STEPS", asInteger(NUM_GENS - RASTER_SWITCH_TIMES / STEPSIZE));
+	defineConstant("SIGMA", DISPERSAL_SIGMA * sqrt(STEPSIZE));
+
 	initializeMutationRate(0.0);
 	initializeMutationType("m1", 0.5, "f", 0.0);
 	initializeGenomicElementType("g1", m1, 1.0);
-	initializeGenomicElement(g1, 0, 99999); 
+	initializeGenomicElement(g1, 0, L-1); 
 	initializeRecombinationRate(1e-8);
-	
-	defineConstant("P_D", 0.1); // dispersal probability
-	defineConstant("MEAN_HOPS", 20); // mean number of dispersal hops
-	defineConstant("DISPERSAL_SIGMA", 0.1); // dispersal distance, in km
-	defineConstant("MAP_RES_X", 0.742); // resolution in km (see make_maps.R)
-	defineConstant("MAP_RES_Y", 0.925); // resolution in km (see make_maps.R)
-	defineConstant("MAP_RES", max(MAP_RES_X, MAP_RES_Y)); // resolution
-	defineConstant("LAMBDA", 15.0);  // mean fecundity
-	defineConstant("K", 20 / (MAP_RES_X * MAP_RES_Y));  // mean density per unit area
-	defineConstant("EPS", 0.01); // relative 'density' in bad habitat
-	defineConstant("PROP_INIT", 0.1); // proportion of initially occupied patches
-	defineConstant("HABITAT_SIGMA", 1/sqrt(200)); // SD of how much habitat quality changes per year
-	defineConstant("MAX_SIZE", 2e5);
-	defineConstant("NUM_GENS", 100);
-	defineGlobal("TOTAL", 0);
 
-	if (!exists("DEBUG")) defineConstant("DEBUG", T);
-	STEPSIZE = 100; // years per generation (to make debugging go faster)
-	defineConstant("SIGMA", DISPERSAL_SIGMA * sqrt(STEPSIZE));
-	
-	// note that LH0_4 looks like today (but lower-res)
-	defineGlobal("RASTERS",  c("HS15_17.png", "BA13_15.png", "EH8_12.png", "MH4_8.png", "LH0_4.png", "current.png"));
-	// the habitat is entirely RASTER[k] at RASTER_SWITCH_TIMES[k]
-	defineGlobal("RASTER_SWITCH_TIMES", asInteger(NUM_GENS - c(16, 14, 10, 6, 2, 0) * 1000 / STEPSIZE));
-	defineGlobal("RASTER_NUM", min(which(RASTER_SWITCH_TIMES > 0)));
+	defineGlobal("TOTAL", 0);
+	defineGlobal("RASTER_NUM", min(which(RASTER_SWITCH_TIMES_AGO > 0)));
 	defineGlobal("LAST_HABITAT", Image(RASTERS[max(0, RASTER_NUM - 1)]));
 	defineGlobal("NEXT_HABITAT", Image(RASTERS[RASTER_NUM]));
+
+    if (STEPSIZE != 1)
+        catn("DEBUG: STEPSIZE is not equal to 1: running a coarse simulation!.");
+    if (DEBUG)
+        catn("DEBUG: in DEBUG mode! Things will be slower.");
 	
 	// spatial interactions
 	initializeInteractionType(1, "xy", reciprocal=T, maxDistance=2 * MAP_RES);
@@ -49,20 +79,27 @@ s1 999 late() {
 	defineGlobal("NEXT_HABITAT", Image(RASTERS[RASTER_NUM]));
 }
 
+// End of simulation
 s99 2000 late() {
 	catn("Done!");
-	sim.treeSeqOutput("nebria_" + getSeed() + ".trees");
+	sim.treeSeqOutput(OUTPATH, metadata=params);
 	sim.simulationFinished();
 }
 
+// Schedule switching of rasters and output
 1 late() {
 	this_num = max(0, RASTER_NUM - 1);
-	catn("Starting with raster" + RASTERS[this_num] + "(" + this_num + ") and interpolating to " + RASTERS[RASTER_NUM] + "(" + RASTER_NUM + ").");
-	switch_gens = RASTER_SWITCH_TIMES[RASTER_SWITCH_TIMES > 0 & RASTER_SWITCH_TIMES < NUM_GENS];
+	catn("Starting with raster" + RASTERS[this_num]
+         + "(" + this_num + ") and interpolating to " + RASTERS[RASTER_NUM]
+         + "(" + RASTER_NUM + ").");
+	switch_gens = RASTER_SWITCH_STEPS[RASTER_SWITCH_STEPS > 0 & RASTER_SWITCH_STEPS < NUM_GENS];
 	if (length(switch_gens) > 0) sim.rescheduleScriptBlock(s1, generations=switch_gens);
+
 	sim.rescheduleScriptBlock(s99, generations=NUM_GENS);
 }
 
+
+// Informational output
 1 late() {
 	// FOR DEBUGGING: to see an extra map
 	if (DEBUG) sim.addSubpop("p2", 1);
@@ -119,7 +156,7 @@ s99 2000 late() {
 2: late() {
 	// update spatial map
 	if (RASTER_NUM > 0) {
-		a = (sim.generation - RASTER_SWITCH_TIMES[RASTER_NUM - 1])/ (RASTER_SWITCH_TIMES[RASTER_NUM] - RASTER_SWITCH_TIMES[RASTER_NUM - 1]);
+		a = (sim.generation - RASTER_SWITCH_STEPS[RASTER_NUM - 1])/ (RASTER_SWITCH_STEPS[RASTER_NUM] - RASTER_SWITCH_STEPS[RASTER_NUM - 1]);
 	} else {
 		a = 1.0;
 	}
