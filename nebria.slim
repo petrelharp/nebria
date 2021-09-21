@@ -11,13 +11,13 @@ initialize() {
 	    "DISPERSAL_SIGMA", 0.1, // dispersal distance, in km
 	    "MAP_RES_X", 0.742, // resolution in km (see make_maps.R)
 	    "MAP_RES_Y", 0.925, // resolution in km (see make_maps.R)
-	    "MAP_RES", max(MAP_RES_X, MAP_RES_Y), // resolution
-	    "LAMBDA", 15.0,  // mean fecundity
-	    "K", 20 / (MAP_RES_X * MAP_RES_Y),  // mean density per unit area
+        "POP_SIZE", 100, // mean number per patch
+	    "LAMBDA", 5.0,  // mean fecundity
 	    "EPS", 0.01, // relative 'density' in bad habitat
 	    "PROP_INIT", 0.1, // proportion of initially occupied patches
 	    "HABITAT_SIGMA", 1/sqrt(200), // SD of how much habitat quality changes per year
 		"L", 1e6, // length of the genome
+        "SUITABILITY_MAP", "geo_only_suitability.png", // suitability raster
         // the habitat is entirely RASTER[k] at RASTER_SWITCH_TIMES_AGO[k]
         "RASTERS", c("HS15_17.png",
                      "BA13_15.png",
@@ -25,6 +25,7 @@ initialize() {
                      "MH4_8.png",
                      "LH0_4.png", // note that LH0_4 looks like today (but lower-res)
                      "current.png"),
+        "RASTER_BBOX", c(-119.9996, -117.99993, 35.9995, 38.01215), // the output from bbox()
 	    "RASTER_SWITCH_TIMES_AGO", c(16, 14, 10, 6, 2, 0) * 1000, // converted to generations below
         "DEBUG", T,
         "STEPSIZE", 100,  // years per generation (to make debugging go faster)
@@ -32,22 +33,28 @@ initialize() {
 	    "NUM_GENS", 100,
 		"OUTDIR", "."
 	);
-	if (fileExists("params.slim")) {
-		local_defaults = executeLambda(paste(c(readFile("params.slim"), ";"), sep=" "));
+    paramfile = defaults.getValue("OUTDIR") + "/" + "params.json";
+	if (fileExists(paramfile)) {
+		local_defaults = Dictionary(paste(readFile(paramfile), sep="\n"));
 		defaults.addKeysAndValuesFrom(local_defaults);
 	}
-	defaults.setValue("OUTPATH", OUTDIR + "/sim_" + getSeed() + ".trees");
+	defaults.setValue("OUTPATH", defaults.getValue("OUTDIR") + "/sim_" + getSeed() + ".trees");
     
+    catn("-------------\n");
 	for (k in defaults.allKeys) {
 		if (!exists(k)) {
 			defineConstant(k, defaults.getValue(k));
 		} else {
 			defaults.setValue(k, executeLambda(paste(c(k, ";"), sep='')));
 		}
+        catn("  " + k + ": " + defaults.getValue(k));
 	}
+    catn("-------------\n");
 	defineGlobal("params", defaults);
 
-	defineConstant("RASTER_SWITCH_STEPS", asInteger(NUM_GENS - RASTER_SWITCH_TIMES / STEPSIZE));
+    defineConstant("K", POP_SIZE / (MAP_RES_X * MAP_RES_Y));  // mean density per unit area
+    defineConstant("MAP_RES", max(MAP_RES_X, MAP_RES_Y));
+	defineConstant("RASTER_SWITCH_STEPS", asInteger(NUM_GENS - RASTER_SWITCH_TIMES_AGO / STEPSIZE));
 	defineConstant("SIGMA", DISPERSAL_SIGMA * sqrt(STEPSIZE));
 
 	initializeMutationRate(0.0);
@@ -99,7 +106,6 @@ s99 2000 late() {
 }
 
 
-// Informational output
 1 late() {
 	// FOR DEBUGGING: to see an extra map
 	if (DEBUG) sim.addSubpop("p2", 1);
@@ -107,7 +113,7 @@ s99 2000 late() {
 
 1 late() {
 	habitat = LAST_HABITAT;
-	suitability = Image("geo_only_suitability.png");
+	suitability = Image(SUITABILITY_MAP);
 	width = habitat.width * MAP_RES_X;
 	height = habitat.height * MAP_RES_Y;
 	num_patches = sum(habitat.floatG > EPS);
@@ -144,7 +150,7 @@ s99 2000 late() {
 		ind.setSpatialPosition(
 			pos
 			+ rnorm(2, sd=SIGMA/20)
-			);
+	    );
 		if (DEBUG) {
 			for (key in c("num_hops", "num_hop_tries", "children", "distance")) {
 				ind.setValue(key, 0);
@@ -179,12 +185,14 @@ reproduction(p1, "F") {
 		}
 		if (mate.sex == "M") {
 			for (k in seqLen(rpois(1, LAMBDA))) {
-				loc = individual.spatialPosition;
-				num_hops = 0;
+                // begin with one hop
+				loc = individual.spatialPosition + rnorm(2, mean=0, sd=SIGMA / sqrt(MEAN_HOPS));
+				num_hops = 1;
 				tries = 0;
 				init_loc = loc;
 				if (runif(1) < P_D) {
-					k = rgeom(1, 1/MEAN_HOPS);
+                    // NegBinom(r, p) is Pois(Gamma(shape=r, rate=(1-p)/p))
+                    k = rpois(1, rexp(1, 1/MEAN_HOPS));
 					while (num_hops < k & tries < 1000) {
 						current = p1.spatialMapValue('suitability', loc);
 						next_loc = loc + rnorm(2, mean=0, sd=SIGMA / sqrt(MEAN_HOPS));
