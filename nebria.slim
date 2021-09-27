@@ -4,74 +4,74 @@ initialize() {
 	initializeSex("A");
 	initializeTreeSeq();
 	// these are default params that can be modified with -d at runtime
-    // or read in from "params.slim"
+	// or read in from "params.slim"
 	defaults = Dictionary(
-	    "P_D", 0.1, // dispersal probability
-	    "MEAN_HOPS", 20, // mean number of dispersal hops
-	    "DISPERSAL_SIGMA", 1.0, // dispersal distance, in km
-	    "MAP_RES_X", 0.742, // resolution in km (see make_maps.R)
-	    "MAP_RES_Y", 0.925, // resolution in km (see make_maps.R)
-        "POP_SIZE", 100, // mean number per patch
-	    "LAMBDA", 5.0,  // mean fecundity
-	    "EPS", 0.01, // relative 'density' in bad habitat
-	    "PROP_INIT", 0.1, // proportion of initially occupied patches
-	    "HABITAT_SIGMA", 1/sqrt(200), // SD of how much habitat quality changes per year
+		"P_D", 0.1, // dispersal probability
+		"MEAN_HOPS", 20, // mean number of dispersal hops
+		"DISPERSAL_SIGMA", 1.0, // dispersal distance, in km
+		"MAP_RES_X", 0.742, // resolution in km (see make_maps.R)
+		"MAP_RES_Y", 0.925, // resolution in km (see make_maps.R)
+		"POP_SIZE", 100, // mean number per patch
+		"LAMBDA", 5.0,  // mean fecundity
+		"EPS", 0.01, // relative 'density' in bad habitat
+		"PROP_INIT", 0.1, // proportion of initially occupied patches
+		"HABITAT_SIGMA", 1/sqrt(200), // SD of how much habitat quality changes per year
 		"L", 1e6, // length of the genome
-        "SUITABILITY_MAP", "geo_only_suitability.png", // suitability raster
-        // the habitat is entirely RASTER[k] at RASTER_SWITCH_TIMES_AGO[k]
-        "RASTERS", c("HS15_17.png",
-                     "BA13_15.png",
-                     "EH8_12.png",
-                     "MH4_8.png",
-                     "LH0_4.png", // note that LH0_4 looks like today (but lower-res)
-                     "current.png"),
-        "RASTER_BBOX", c(-119.9996, -117.99993, 35.9995, 38.01215), // the output from bbox()
-	    "RASTER_SWITCH_TIMES_AGO", c(16, 14, 10, 6, 2, 0) * 1000, // converted to generations below
-        "DEBUG", T,
-        "STEPSIZE", 100,  // years per generation (to make debugging go faster)
-	    "MAX_SIZE", 2e5,
-	    "NUM_GENS", 100,
+		"SUITABILITY_MAP", "geo_only_suitability.png", // suitability raster
+		// the habitat is entirely RASTER[k] at RASTER_SWITCH_TIMES_AGO[k]
+		"RASTERS", c("HS15_17.png",
+		"BA13_15.png",
+		"EH8_12.png",
+		"MH4_8.png",
+		"LH0_4.png", // note that LH0_4 looks like today (but lower-res)
+		"current.png"),
+		"RASTER_BBOX", c(-119.9996, -117.99993, 35.9995, 38.01215), // the output from bbox()
+		"RASTER_SWITCH_TIMES_AGO", c(16, 14, 10, 6, 2, 0) * 1000, // converted to generations below
+		"DEBUG", T,
+		"STEPSIZE", 100,  // years per generation (to make debugging go faster)
+		"MAX_SIZE", 2e5,
+		"NUM_GENS", 100,
 		"OUTDIR", "."
-	);
-    paramfile = defaults.getValue("OUTDIR") + "/" + "params.json";
+		);
+	paramfile = defaults.getValue("OUTDIR") + "/" + "params.json";
 	if (fileExists(paramfile)) {
 		local_defaults = Dictionary(paste(readFile(paramfile), sep="\n"));
 		defaults.addKeysAndValuesFrom(local_defaults);
 	}
 	defaults.setValue("OUTPATH", defaults.getValue("OUTDIR") + "/sim_" + getSeed() + ".trees");
-    
-    catn("-------------\n");
+	
+	catn("-------------\n");
 	for (k in defaults.allKeys) {
 		if (!exists(k)) {
 			defineConstant(k, defaults.getValue(k));
 		} else {
 			defaults.setValue(k, executeLambda(paste(c(k, ";"), sep='')));
 		}
-        catn("  " + k + ": " + defaults.getValue(k));
+		catn("  " + k + ": " + defaults.getValue(k));
 	}
-    catn("-------------\n");
+	catn("-------------\n");
 	defineGlobal("params", defaults);
-
-    defineConstant("K", POP_SIZE / (MAP_RES_X * MAP_RES_Y));  // mean density per unit area
-    defineConstant("MAP_RES", max(MAP_RES_X, MAP_RES_Y));
+	
+	defineConstant("K", POP_SIZE / (MAP_RES_X * MAP_RES_Y));  // mean density per unit area
+	defineConstant("MAP_RES", max(MAP_RES_X, MAP_RES_Y));
 	defineConstant("RASTER_SWITCH_STEPS", asInteger(NUM_GENS - RASTER_SWITCH_TIMES_AGO / STEPSIZE));
 	defineConstant("SIGMA", DISPERSAL_SIGMA * sqrt(STEPSIZE));
-
+	
 	initializeMutationRate(0.0);
 	initializeMutationType("m1", 0.5, "f", 0.0);
 	initializeGenomicElementType("g1", m1, 1.0);
-	initializeGenomicElement(g1, 0, L-1); 
+	initializeGenomicElement(g1, 0, L-1);
 	initializeRecombinationRate(1e-8);
-
+	
 	defineGlobal("TOTAL", 0);
 	defineGlobal("RASTER_NUM", min(which(RASTER_SWITCH_TIMES_AGO > 0)));
 	defineGlobal("LAST_HABITAT", Image(RASTERS[max(0, RASTER_NUM - 1)]));
 	defineGlobal("NEXT_HABITAT", Image(RASTERS[RASTER_NUM]));
-
-    if (STEPSIZE != 1)
-        catn("DEBUG: STEPSIZE is not equal to 1: running a coarse simulation!.");
-    if (DEBUG)
-        catn("DEBUG: in DEBUG mode! Things will be slower.");
+	
+	if (STEPSIZE != 1)
+		catn("DEBUG: STEPSIZE is not equal to 1: running a coarse simulation!.");
+	if (DEBUG)
+		catn("DEBUG: in DEBUG mode! Things will be slower.");
 	
 	// spatial interactions
 	initializeInteractionType(1, "xy", reciprocal=T, maxDistance=2 * MAP_RES);
@@ -97,11 +97,11 @@ s99 2000 late() {
 1 late() {
 	this_num = max(0, RASTER_NUM - 1);
 	catn("Starting with raster" + RASTERS[this_num]
-         + "(" + this_num + ") and interpolating to " + RASTERS[RASTER_NUM]
-         + "(" + RASTER_NUM + ").");
+		+ "(" + this_num + ") and interpolating to " + RASTERS[RASTER_NUM]
+		+ "(" + RASTER_NUM + ").");
 	switch_gens = RASTER_SWITCH_STEPS[RASTER_SWITCH_STEPS > 0 & RASTER_SWITCH_STEPS < NUM_GENS];
 	if (length(switch_gens) > 0) sim.rescheduleScriptBlock(s1, generations=switch_gens);
-
+	
 	sim.rescheduleScriptBlock(s99, generations=NUM_GENS);
 }
 
@@ -150,7 +150,7 @@ s99 2000 late() {
 		ind.setSpatialPosition(
 			pos
 			+ rnorm(2, sd=SIGMA/20)
-	    );
+			);
 		if (DEBUG) {
 			for (key in c("num_hops", "num_hop_tries", "children", "distance")) {
 				ind.setValue(key, 0);
@@ -185,17 +185,17 @@ reproduction(p1, "F") {
 		}
 		if (mate.sex == "M") {
 			for (k in seqLen(rpois(1, LAMBDA))) {
-                // begin with one hop
+				// begin with one hop
 				loc = individual.spatialPosition;
 				num_hops = 0;
 				tries = 0;
 				init_loc = loc;
 				if (runif(1) < P_D) {
-                    // start with one hop
-                    loc = loc + rnorm(2, mean=0, sd=SIGMA / sqrt(MEAN_HOPS));
-                    num_hops = 1;
-                    // NegBinom(r, p) is Pois(Gamma(shape=r, rate=(1-p)/p))
-                    k = rpois(1, rexp(1, mu=MEAN_HOPS));
+					// start with one hop
+					loc = loc + rnorm(2, mean=0, sd=SIGMA / sqrt(MEAN_HOPS));
+					num_hops = 1;
+					// NegBinom(r, p) is Pois(Gamma(shape=r, rate=(1-p)/p))
+					k = rpois(1, rexp(1, mu=MEAN_HOPS));
 					while (num_hops < k & tries < 1000) {
 						current = p1.spatialMapValue('suitability', loc);
 						next_loc = loc + rnorm(2, mean=0, sd=SIGMA / sqrt(MEAN_HOPS));
