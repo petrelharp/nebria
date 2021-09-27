@@ -1,3 +1,13 @@
+# Sep 27:
+
+- add stochasticity for goodness of patch: perhaps draw independently by year 
+    * on a coarse scale (like 50km?)? but no, because we don't want big patches to dissapear entirely
+    * so, draw independently by pixel
+- the glacier boundary is from about 21kya
+- cut glacier out of only oldest map
+- Ottoway has low heterozygosity, probably because it's very hard to find even the three beetles
+    they sampled.
+
 # Sep 13:
 
 - note that when we compare to for instance pi, if it has a lot of local randomness

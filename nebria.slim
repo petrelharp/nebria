@@ -6,7 +6,7 @@ initialize() {
 	// these are default params that can be modified with -d at runtime
 	// or read in from "params.slim"
 	defaults = Dictionary(
-		"P_D", 0.1, // dispersal probability
+		"P_D", 0.01, // dispersal probability
 		"MEAN_HOPS", 20, // mean number of dispersal hops
 		"DISPERSAL_SIGMA", 1.0, // dispersal distance, in km
 		"MAP_RES_X", 0.742, // resolution in km (see make_maps.R)
@@ -55,7 +55,7 @@ initialize() {
 	defineConstant("K", POP_SIZE / (MAP_RES_X * MAP_RES_Y));  // mean density per unit area
 	defineConstant("MAP_RES", max(MAP_RES_X, MAP_RES_Y));
 	defineConstant("RASTER_SWITCH_STEPS", asInteger(NUM_GENS - RASTER_SWITCH_TIMES_AGO / STEPSIZE));
-	defineConstant("SIGMA", DISPERSAL_SIGMA * sqrt(STEPSIZE));
+	defineConstant("SIGMA", DISPERSAL_SIGMA / sqrt(MEAN_HOPS));
 	
 	initializeMutationRate(0.0);
 	initializeMutationType("m1", 0.5, "f", 0.0);
@@ -149,7 +149,7 @@ s99 2000 late() {
 		assert(p1.spatialMapValue('habitat', pos) > EPS);
 		ind.setSpatialPosition(
 			pos
-			+ rnorm(2, sd=SIGMA/20)
+			+ rnorm(2, sd=SIGMA)
 			);
 		if (DEBUG) {
 			for (key in c("num_hops", "num_hop_tries", "children", "distance")) {
@@ -168,7 +168,9 @@ s99 2000 late() {
 	}
 	for (p in sim.subpopulations) {
 		defineGlobal("DH", 1 - abs(1 - (abs(DH + rnorm(length(DH), 0, HABITAT_SIGMA)) % 2)));
-		h = ( (1-a) * LAST_HABITAT.floatG + a * NEXT_HABITAT.floatG ) * DH;
+		h = ( (1-a) * LAST_HABITAT.floatG + a * NEXT_HABITAT.floatG )
+		     * DH  // gradual habitat change
+		     * rgamma(1, mean=0.3, shape=2);  // randomness due to goodness of the year (TODO: make this a parameter)
 		p.defineSpatialMap('habitat', 'xy', h,
 			valueRange=c(0.0, 1.0), colors=c("#000000", "#FFFFFF"));
 	}
@@ -192,13 +194,13 @@ reproduction(p1, "F") {
 				init_loc = loc;
 				if (runif(1) < P_D) {
 					// start with one hop
-					loc = loc + rnorm(2, mean=0, sd=SIGMA / sqrt(MEAN_HOPS));
+					loc = loc + rnorm(2, mean=0, sd=SIGMA);
 					num_hops = 1;
 					// NegBinom(r, p) is Pois(Gamma(shape=r, rate=(1-p)/p))
 					k = rpois(1, rexp(1, mu=MEAN_HOPS));
 					while (num_hops < k & tries < 1000) {
 						current = p1.spatialMapValue('suitability', loc);
-						next_loc = loc + rnorm(2, mean=0, sd=SIGMA / sqrt(MEAN_HOPS));
+						next_loc = loc + rnorm(2, mean=0, sd=SIGMA);
 						if (runif(1) * current <= p1.spatialMapValue('suitability', next_loc)) {
 							loc = next_loc;
 							num_hops = num_hops + 1;
