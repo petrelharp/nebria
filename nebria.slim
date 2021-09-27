@@ -8,7 +8,7 @@ initialize() {
 	defaults = Dictionary(
 	    "P_D", 0.1, // dispersal probability
 	    "MEAN_HOPS", 20, // mean number of dispersal hops
-	    "DISPERSAL_SIGMA", 0.1, // dispersal distance, in km
+	    "DISPERSAL_SIGMA", 1.0, // dispersal distance, in km
 	    "MAP_RES_X", 0.742, // resolution in km (see make_maps.R)
 	    "MAP_RES_Y", 0.925, // resolution in km (see make_maps.R)
         "POP_SIZE", 100, // mean number per patch
@@ -186,13 +186,16 @@ reproduction(p1, "F") {
 		if (mate.sex == "M") {
 			for (k in seqLen(rpois(1, LAMBDA))) {
                 // begin with one hop
-				loc = individual.spatialPosition + rnorm(2, mean=0, sd=SIGMA / sqrt(MEAN_HOPS));
-				num_hops = 1;
+				loc = individual.spatialPosition;
+				num_hops = 0;
 				tries = 0;
 				init_loc = loc;
 				if (runif(1) < P_D) {
+                    // start with one hop
+                    loc = loc + rnorm(2, mean=0, sd=SIGMA / sqrt(MEAN_HOPS));
+                    num_hops = 1;
                     // NegBinom(r, p) is Pois(Gamma(shape=r, rate=(1-p)/p))
-                    k = rpois(1, rexp(1, 1/MEAN_HOPS));
+                    k = rpois(1, rexp(1, mu=MEAN_HOPS));
 					while (num_hops < k & tries < 1000) {
 						current = p1.spatialMapValue('suitability', loc);
 						next_loc = loc + rnorm(2, mean=0, sd=SIGMA / sqrt(MEAN_HOPS));

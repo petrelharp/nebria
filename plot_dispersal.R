@@ -56,7 +56,7 @@ reproduction <- function (loc, P_D=1) {
 			tries = 0;
 			if (runif(1) < P_D) {
                 # // NegBinom(r, p) is Pois(Gamma(shape=r, rate=(1-p)/p))
-                k = 1 + rpois(1, rexp(1, 1/MEAN_HOPS));
+                k = 1 + rpois(1, rexp(1, rate=1/MEAN_HOPS));
 				while (num_hops < k & tries < 100) {
                     current = p1.spatialMapValue('suitability', loc);
 					next_loc = loc + rnorm(2, mean=0, sd=SIGMA / sqrt(MEAN_HOPS));

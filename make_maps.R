@@ -4,7 +4,7 @@ library(sf)
 library(png)
 
 # proportion of pixels which should not be zeroed out
-keep_prop <- 1/25
+keep_prop <- 1/8
 
 set.seed(123)
 
