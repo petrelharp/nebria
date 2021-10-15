@@ -9,8 +9,9 @@
 #SBATCH --cpus-per-task=1               ### Number of CPU cores per task
 #SBATCH --mem=16G
 
-module use /projects/apps/shared/modulefiles/
-module load gcc SLiM/3.6
+conda activate treestuff
+
+slim -v
 
 DIRS=($(find param_grid -mindepth 1 -type 'd'))
 K=${DIRS[$SLURM_ARRAY_TASK_ID]}
@@ -20,6 +21,6 @@ echo "cd $DIR"
 echo "slim ../../nebria.slim"
 
 cd $DIR
-slim ../../nebria.slim
+slim ../../nebria.slim &> slurm.log
 
  
