@@ -1,8 +1,8 @@
 {
     "DEBUG" : true,
-    "NUM_GENS" : 20,
+    "NUM_GENS" : 5,
     "STEPSIZE" : 1,
-    "POP_SIZE" : 100,
+    "POP_SIZE" : 10,
     "P_D" : 0.01,
     "DISPERSAL_SIGMA" : 1.0,
     "YEAR_SHAPE" : 1.5,
