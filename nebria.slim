@@ -258,6 +258,7 @@ late() {
 	habitat = p1.spatialMapValue('habitat', larvae.spatialPosition);
 	larvae.fitnessScaling = pmax(EPS, habitat) * K/density;
 	defineGlobal("NUM_JUVENILES", length(larvae));
+    catn("NUM_JUVENILES: " + NUM_JUVENILES);
 }
 
 2: early() {
