@@ -28,9 +28,6 @@ points(samples)
 dev.off()
 png::writePNG(as.matrix(x), paste0(fn, ".png"), dpi=24)
 
-## very big
-# glacier <- sf::read_sf("data/glacier_boundary")
-
 
 # Project all to align with "current", which is a factor of 5
 tifs <- c("current.tif", "LH0_4.tif", "MH4_8.tif", "EH8_12.tif", "BA13_15.tif", "HS15_17.tif")
@@ -103,6 +100,16 @@ wm_box <- SpatialPolygons(list(Polygons(list(
 )
 rasters <- lapply(rasters, mask, wm_box, inverse=TRUE)
 
+# remove the glacier from the oldest time
+# TODO!!!
+if (!file.exists("glacier_mask.tif")) {
+    # kinda big
+    glacier <- sf::read_sf("data/glacier_boundary")
+    glacier_mask <- stars::st_rasterize(glacier, template=st_as_stars(rasters[["current"]]))
+
+    mr <- mask(rasters[["HS15_17"]], glacier, inverse=TRUE)
+    mr[is.na(mr)] <- 0.0
+}
 
 ### choose actually good patches, which are common across time periods
 keep <- rasters[['current']]
