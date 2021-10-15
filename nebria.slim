@@ -20,13 +20,14 @@ initialize() {
 		"SUITABILITY_MAP", "geo_only_suitability.png", // suitability raster
 		// the habitat is entirely RASTER[k] at RASTER_SWITCH_TIMES_AGO[k]
 		"RASTERS", c("HS15_17.png",
-		"BA13_15.png",
-		"EH8_12.png",
-		"MH4_8.png",
-		"LH0_4.png", // note that LH0_4 looks like today (but lower-res)
-		"current.png"),
+		             "BA13_15.png",
+		             "EH8_12.png",
+		             "MH4_8.png",
+		             "LH0_4.png", // note that LH0_4 looks like today (but lower-res)
+		             "current.png"),
 		"RASTER_BBOX", c(-119.9996, -117.99993, 35.9995, 38.01215), // the output from bbox()
 		"RASTER_SWITCH_TIMES_AGO", c(16, 14, 10, 6, 2, 0) * 1000, // converted to generations below
+		"YEAR_SHAPE", 1.5, // shape parameter in gamma distribution of year effects
 		"DEBUG", T,
 		"STEPSIZE", 100,  // years per generation (to make debugging go faster)
 		"MAX_SIZE", 2e5,
@@ -39,6 +40,7 @@ initialize() {
 		defaults.addKeysAndValuesFrom(local_defaults);
 	}
 	defaults.setValue("OUTPATH", defaults.getValue("OUTDIR") + "/sim_" + getSeed() + ".trees");
+	defaults.setValue("LOGPATH", defaults.getValue("OUTDIR") + "/sim_" + getSeed() + ".log");
 	
 	catn("-------------\n");
 	for (k in defaults.allKeys) {
@@ -56,6 +58,7 @@ initialize() {
 	defineConstant("MAP_RES", max(MAP_RES_X, MAP_RES_Y));
 	defineConstant("RASTER_SWITCH_STEPS", asInteger(NUM_GENS - RASTER_SWITCH_TIMES_AGO / STEPSIZE));
 	defineConstant("SIGMA", DISPERSAL_SIGMA / sqrt(MEAN_HOPS));
+	defineConstant("YEAR_MEAN", exp(1/(2*YEAR_SHAPE)) / YEAR_SHAPE); // defined so that mean(log(year effect)) is near zero
 	
 	initializeMutationRate(0.0);
 	initializeMutationType("m1", 0.5, "f", 0.0);
@@ -67,6 +70,7 @@ initialize() {
 	defineGlobal("RASTER_NUM", min(which(RASTER_SWITCH_TIMES_AGO > 0)));
 	defineGlobal("LAST_HABITAT", Image(RASTERS[max(0, RASTER_NUM - 1)]));
 	defineGlobal("NEXT_HABITAT", Image(RASTERS[RASTER_NUM]));
+	defineGlobal("NUM_JUVENILES", 0);
 	
 	if (STEPSIZE != 1)
 		catn("DEBUG: STEPSIZE is not equal to 1: running a coarse simulation!.");
@@ -76,6 +80,21 @@ initialize() {
 	// spatial interactions
 	initializeInteractionType(1, "xy", reciprocal=T, maxDistance=2 * MAP_RES);
 	i1.setInteractionFunction("n", 1/(2 * PI * MAP_RES * MAP_RES), MAP_RES);
+
+}
+
+1 early() {
+	log = sim.createLogFile(LOGPATH, initialContents="# ", logInterval=1);
+	log.addGeneration();
+	log.addGenerationStage();
+	log.addPopulationSize();
+	log.addCustomColumn("num_juveniles", "NUM_JUVENILES;");
+	if (DEBUG) {
+		log.addMeanSDColumns("num_hops", "p1.individuals.getValue('num_hops');");
+		log.addCustomColumn("prop_dispersers", "mean(p1.individuals.getValue('distance') > sqrt(2) * MAP_RES);");
+		log.addMeanSDColumns("distance", "p1.individuals.getValue('distance');");
+		log.addMeanSDColumns("children", "p1.individuals.getValue('children');");
+	}
 }
 
 s1 999 late() {
@@ -104,7 +123,6 @@ s99 2000 late() {
 	
 	sim.rescheduleScriptBlock(s99, generations=NUM_GENS);
 }
-
 
 1 late() {
 	// FOR DEBUGGING: to see an extra map
@@ -170,8 +188,8 @@ s99 2000 late() {
 		defineGlobal("DH", 1 - abs(1 - (abs(DH + rnorm(length(DH), 0, HABITAT_SIGMA)) % 2)));
 		h = ( (1-a) * LAST_HABITAT.floatG + a * NEXT_HABITAT.floatG )
 		     * DH  // gradual habitat change
-		     * rgamma(1, mean=0.3, shape=2);  // randomness due to goodness of the year (TODO: make this a parameter)
-		p.defineSpatialMap('habitat', 'xy', h,
+		     * rgamma(length(DH), mean=YEAR_MEAN, shape=YEAR_SHAPE);  // randomness due to goodness of the year
+      p.defineSpatialMap('habitat', 'xy', h,
 			valueRange=c(0.0, 1.0), colors=c("#000000", "#FFFFFF"));
 	}
 }
@@ -239,31 +257,15 @@ late() {
 	density = i1.totalOfNeighborStrengths(larvae);
 	habitat = p1.spatialMapValue('habitat', larvae.spatialPosition);
 	larvae.fitnessScaling = pmax(EPS, habitat) * K/density;
+	defineGlobal("NUM_JUVENILES", length(larvae));
 }
 
 2: early() {
-	cat("Generation: " + sim.generation + " early: " + p1.individualCount);
+	catn("Generation: " + sim.generation + " early: " + p1.individualCount);
 	if (p1.individualCount == 0 | p1.individualCount > MAX_SIZE) stop("Stopping: " + p1.individualCount + " individuals.");
-	if (DEBUG) {
-		inds = p1.individuals;
-		hops = inds.getValue('num_hops');
-		cat(" mean_hops: " + mean(hops[hops > 0]) + " max_tries: " + max(inds.getValue('num_hop_tries')));
-		cat(" prop_dispersers: " + mean(inds.getValue('distance') > sqrt(2) * MAP_RES));
-		cat(" mean_distance: " + mean(inds.getValue('distance')) + " sd_distance: " + sd(inds.getValue('distance')));
-		cat(" mean_children: " + mean(inds.getValue('children')) + " sd_children: " + sd(inds.getValue('children')));
-	}
-	catn("");
 }
 
 1: late() {
-	cat("Generation: " + sim.generation + "  late: " + p1.individualCount);
+	catn("Generation: " + sim.generation + "  late: " + p1.individualCount);
 	if (p1.individualCount == 0 | p1.individualCount > MAX_SIZE) stop("Stopping: " + p1.individualCount + " individuals.");
-	if (DEBUG) {
-		inds = p1.individuals;
-		hops = inds.getValue('num_hops');
-		cat(" mean_hops: " + mean(hops[hops > 0]) + " max_tries: " + max(inds.getValue('num_hop_tries')));
-		cat(" prop_dispersers: " + mean(inds.getValue('distance') > sqrt(2) * MAP_RES));
-		cat(" mean_distance: " + mean(inds.getValue('distance')) + " sd_distance: " + sd(inds.getValue('distance')));
-	}
-	catn("");
 }
