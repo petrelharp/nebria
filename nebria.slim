@@ -71,6 +71,8 @@ initialize() {
 	defineGlobal("LAST_HABITAT", Image(RASTERS[max(0, RASTER_NUM - 1)]));
 	defineGlobal("NEXT_HABITAT", Image(RASTERS[RASTER_NUM]));
 	defineGlobal("NUM_JUVENILES", 0);
+	defineGlobal("MEAN_CHILDREN", 0);
+	defineGlobal("SD_CHILDREN", 0);
 	
 	if (STEPSIZE != 1)
 		catn("DEBUG: STEPSIZE is not equal to 1: running a coarse simulation!.");
@@ -93,7 +95,8 @@ initialize() {
 		log.addMeanSDColumns("num_hops", "p1.individuals.getValue('num_hops');");
 		log.addCustomColumn("prop_dispersers", "mean(p1.individuals.getValue('distance') > sqrt(2) * MAP_RES);");
 		log.addMeanSDColumns("distance", "p1.individuals.getValue('distance');");
-		log.addMeanSDColumns("children", "p1.individuals.getValue('children');");
+		log.addCustomColumn("children_mean", "MEAN_CHILDREN;");
+		log.addCustomColumn("children_sd", "SD_CHILDREN;");
 	}
 }
 
@@ -258,7 +261,10 @@ late() {
 	habitat = p1.spatialMapValue('habitat', larvae.spatialPosition);
 	larvae.fitnessScaling = pmax(EPS, habitat) * K/density;
 	defineGlobal("NUM_JUVENILES", length(larvae));
-    catn("NUM_JUVENILES: " + NUM_JUVENILES);
+	if (DEBUG) {
+	   defineGlobal("MEAN_CHILDREN", mean(inds[inds.age > 0].getValue("children")));
+	   defineGlobal("SD_CHILDREN", sd(inds[inds.age > 0].getValue("children")));
+	}
 }
 
 2: early() {
