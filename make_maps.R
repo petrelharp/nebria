@@ -16,21 +16,21 @@ samples <- SpatialPointsDataFrame(
 )
 
 
-fn <- "geo_only_suitability"
-x <- raster(paste0(fn, ".tif"))
-png(file=paste0(fn, "_with_axes.png"),
-    width=48*dim(x)[1]*6/max(dim(x)),
-    height=48*dim(x)[2]*6/max(dim(x)),
-    res=48,
-    pointsize=10)
-raster::plot(x)
-points(samples)
-dev.off()
-png::writePNG(as.matrix(x), paste0(fn, ".png"), dpi=24)
-
+for (fn in c("geo_only_suitability", "glacier_boundary_fill")) {
+    x <- raster(paste0(fn, ".tif"))
+    png(file=paste0(fn, "_with_axes.png"),
+        width=48*dim(x)[1]*6/max(dim(x)),
+        height=48*dim(x)[2]*6/max(dim(x)),
+        res=48,
+        pointsize=10)
+    raster::plot(x)
+    points(samples)
+    dev.off()
+    png::writePNG(as.matrix(x), paste0(fn, ".png"), dpi=24)
+}
 
 # Project all to align with "current", which is a factor of 5
-tifs <- c("current.tif", "LH0_4.tif", "MH4_8.tif", "EH8_12.tif", "BA13_15.tif", "HS15_17.tif")
+tifs <- c("current.tif", "LH0_4.tif", "MH4_8.tif", "EH8_12.tif", "BA13_15.tif", "HS15_17.tif", "LGM17_21.tif")
 rasters <- lapply(tifs, raster)
 names(rasters) <- gsub(".tif$", "", tifs)
 for (k in 2:length(tifs)) {
@@ -101,15 +101,13 @@ wm_box <- SpatialPolygons(list(Polygons(list(
 rasters <- lapply(rasters, mask, wm_box, inverse=TRUE)
 
 # remove the glacier from the oldest time
-# TODO!!!
-if (!file.exists("glacier_mask.tif")) {
-    # kinda big
-    glacier <- sf::read_sf("data/glacier_boundary")
-    glacier_mask <- stars::st_rasterize(glacier, template=st_as_stars(rasters[["current"]]))
-
-    mr <- mask(rasters[["HS15_17"]], glacier, inverse=TRUE)
-    mr[is.na(mr)] <- 0.0
-}
+glacier_mask <- 
+    projectRaster(
+        raster("glacier_boundary_fill.tif"),
+        rasters[["current"]],
+        method='ngb',
+    )
+rasters[["LGM17_21"]] <- mask(rasters[["LGM17_21"]], glacier_mask, maskvalue=2, updatevalue=0.0)
 
 ### choose actually good patches, which are common across time periods
 keep <- rasters[['current']]
@@ -120,8 +118,8 @@ for (k in seq_along(rasters)) {
     x <- rasters[[k]]
     # version with axes
     png(file=paste0(fn, "_with_axes.png"),
-        width=48*dim(x)[1]*6/max(dim(x)),
-        height=48*dim(x)[2]*6/max(dim(x)),
+        width=144*dim(x)[1]*12/max(dim(x)),
+        height=144*dim(x)[2]*12/max(dim(x)),
         res=48,
         pointsize=10)
     raster::plot(x)
