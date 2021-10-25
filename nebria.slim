@@ -20,12 +20,12 @@ initialize() {
 		"SUITABILITY_MAP", "geo_only_suitability.png", // suitability raster
 		// the habitat is entirely RASTER[k] at RASTER_SWITCH_TIMES_AGO[k]
 		"RASTERS", c("LGM17_21.png",
-						 "HS15_17.png",
-		             "BA13_15.png",
-		             "EH8_12.png",
-		             "MH4_8.png",
-		             "LH0_4.png", // note that LH0_4 looks like today (but lower-res)
-		             "current.png"),
+		"HS15_17.png",
+		"BA13_15.png",
+		"EH8_12.png",
+		"MH4_8.png",
+		"LH0_4.png", // note that LH0_4 looks like today (but lower-res)
+		"current.png"),
 		"RASTER_BBOX", c(-119.9996, -117.99993, 35.9995, 38.01215), // the output from bbox()
 		"RASTER_SWITCH_TIMES_AGO", c(19, 16, 14, 10, 6, 2, 0) * 1000, // converted to generations below
 		"YEAR_SHAPE", 1.5, // shape parameter in gamma distribution of year effects
@@ -191,9 +191,9 @@ s99 2000 late() {
 	for (p in sim.subpopulations) {
 		defineGlobal("DH", 1 - abs(1 - (abs(DH + rnorm(length(DH), 0, HABITAT_SIGMA)) % 2)));
 		h = ( (1-a) * LAST_HABITAT.floatG + a * NEXT_HABITAT.floatG )
-		     * DH  // gradual habitat change
-		     * rgamma(length(DH), mean=YEAR_MEAN, shape=YEAR_SHAPE);  // randomness due to goodness of the year
-      p.defineSpatialMap('habitat', 'xy', h,
+			* DH  // gradual habitat change
+			* rgamma(length(DH), mean=YEAR_MEAN, shape=YEAR_SHAPE);  // randomness due to goodness of the year
+		p.defineSpatialMap('habitat', 'xy', h,
 			valueRange=c(0.0, 1.0), colors=c("#000000", "#FFFFFF"));
 	}
 }
@@ -263,8 +263,8 @@ late() {
 	larvae.fitnessScaling = pmax(EPS, habitat) * K/density;
 	defineGlobal("NUM_JUVENILES", length(larvae));
 	if (DEBUG) {
-	   defineGlobal("MEAN_CHILDREN", mean(inds[inds.age > 0].getValue("children")));
-	   defineGlobal("SD_CHILDREN", sd(inds[inds.age > 0].getValue("children")));
+		defineGlobal("MEAN_CHILDREN", mean(inds[inds.age > 0].getValue("children")));
+		defineGlobal("SD_CHILDREN", sd(inds[inds.age > 0].getValue("children")));
 	}
 }
 
