@@ -19,7 +19,7 @@ dir.create(basedir, showWarnings=FALSE)
 write.csv(param_values, file=file.path(basedir, "param_values.csv"), row.names=FALSE)
 writeLines(toJSON(default_params, pretty=TRUE), file.path(basedir, "default_params.json"))
 
-setup_files <- c("BA13_15.png", "current.png", "EH8_12.png", "geo_only_suitability.png", "HS15_17.png", "LH0_4.png", "MH4_8.png")
+setup_files <- c("BA13_15.png", "current.png", "EH8_12.png", "geo_only_suitability.png", "HS15_17.png", "LH0_4.png", "MH4_8.png", "LGM17_21.png")
 
 for (j in 1:nrow(param_values)) {
     this_dir <- file.path(basedir, param_values$id[j])
