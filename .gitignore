@@ -1,3 +1,5 @@
 .*.swp
 lit
 param_grid
+slurm-*.log
+slurm-*.out
