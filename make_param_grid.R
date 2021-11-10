@@ -2,7 +2,7 @@ library(jsonlite)
 
 default_params  <- fromJSON("params.json")
 default_params$MAX_SIZE <- 1e6
-default_params$NUM_GENS <- 100
+default_params$NUM_GENS <- 10
 
 values <- list(
     POP_SIZE = 10 * 2^(2:5),
