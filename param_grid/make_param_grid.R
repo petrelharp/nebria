@@ -2,19 +2,23 @@ library(jsonlite)
 
 default_params  <- fromJSON("params.json")
 default_params$MAX_SIZE <- 1e6
-default_params$NUM_GENS <- 10
+default_params$NUM_GENS <- 40
 
 values <- list(
-    POP_SIZE = 10 * 2^(2:5),
-    DISPERSAL_SIGMA = seq(0.2, 2, length.out=5),
-    P_D = 2^-(2:6),
-    YEAR_SHAPE = c(1, 1.5, 2)
+    POP_SIZE = 10 * 2^c(2, 5),
+    DISPERSAL_SIGMA = c(0.2, 2),
+    P_D = 2^-c(2, 6),
+    YEAR_SHAPE = c(1, 2)
 )
 
-param_values <- do.call(expand.grid, values)
+nreps <- 300
+base_param_values <- do.call(expand.grid, values)
+param_values <- data.frame(lapply(base_param_values, function (x) {
+            c(x, min(x) + runif(nreps - length(x)) * (max(x) - min(x)))
+    }))
 param_values$id <- sprintf("run%06d", 1:nrow(param_values))
 
-basedir <- "param_grid"
+basedir <- "."
 dir.create(basedir, showWarnings=FALSE)
 write.csv(param_values, file=file.path(basedir, "param_values.csv"), row.names=FALSE)
 writeLines(toJSON(default_params, pretty=TRUE), file.path(basedir, "default_params.json"))
@@ -35,3 +39,4 @@ for (j in 1:nrow(param_values)) {
         file.symlink(file.path("..", "..", f), file.path(this_dir, f))
     }
 }
+

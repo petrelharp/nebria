@@ -1,6 +1,6 @@
 runs <- read.csv("param_values.csv")
 
-for (x in c("run", "slop", "init_indivs")) {
+for (x in c("run", "slope", "init_indivs", "num_gens")) {
     runs[[x]] <- NA
 }
 new_cols <- c("num_individuals", "num_juveniles", "num_hops_mean", "num_hops_sd", 
@@ -17,6 +17,7 @@ for (j in 1:nrow(runs)) {
     }
     runs$slope[j] <- coef(lm(num_individuals ~ generation, data=x))['generation']
     runs$init_indivs[j] <- x$num_individuals[1]
+    runs$num_gens[j] <- x$generation[nrow(x)]
 }
 
 write.csv(runs, file="results.csv", row.names=FALSE)
