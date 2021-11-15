@@ -10,14 +10,18 @@ for (x in new_cols) runs[[x]] <- NA
 
 for (j in 1:nrow(runs)) {
     logs <- list.files(as.character(runs$id[j]), "sim_.*.log", full.names=TRUE)
-    runs$run[j] <- logs[1]
-    x <- read.csv(logs[1], comment="#")
-    for (cn in new_cols) {
-        runs[[cn]][j] <- x[[cn]][nrow(x)]
+    if (length(logs) == 1) {
+        runs$run[j] <- logs[1]
+        x <- read.csv(logs[1], comment="#")
+        for (cn in new_cols) {
+            runs[[cn]][j] <- x[[cn]][nrow(x)]
+        }
+        runs$slope[j] <- coef(lm(num_individuals ~ generation, data=x))['generation']
+        runs$init_indivs[j] <- x$num_individuals[1]
+        runs$num_gens[j] <- x$generation[nrow(x)]
+    } else if (length(logs) > 1) {
+        stop(paste(c("More than one log file for", runs$id[j])))
     }
-    runs$slope[j] <- coef(lm(num_individuals ~ generation, data=x))['generation']
-    runs$init_indivs[j] <- x$num_individuals[1]
-    runs$num_gens[j] <- x$generation[nrow(x)]
 }
 
 write.csv(runs, file="results.csv", row.names=FALSE)
