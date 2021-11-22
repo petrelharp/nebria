@@ -33,7 +33,8 @@ initialize() {
 		"STEPSIZE", 100,  // years per generation (to make debugging go faster)
 		"MAX_SIZE", 2e5,
 		"NUM_GENS", 200,
-		"OUTDIR", "."
+		"OUTDIR", ".",
+		"RELOAD_FILE", ""
 		);
 	paramfile = defaults.getValue("OUTDIR") + "/" + "params.json";
 	if (fileExists(paramfile)) {
@@ -42,6 +43,7 @@ initialize() {
 	}
 	defaults.setValue("OUTPATH", defaults.getValue("OUTDIR") + "/sim_" + getSeed() + ".trees");
 	defaults.setValue("LOGPATH", defaults.getValue("OUTDIR") + "/sim_" + getSeed() + ".log");
+	defaults.setValue("IMAGEPATH", defaults.getValue("OUTDIR") + "/sim_" + getSeed() + "_");
 	
 	catn("-------------\n");
 	for (k in defaults.allKeys) {
@@ -74,6 +76,7 @@ initialize() {
 	defineGlobal("NUM_JUVENILES", 0);
 	defineGlobal("MEAN_CHILDREN", 0);
 	defineGlobal("SD_CHILDREN", 0);
+	defineGlobal("NUM_OCCUPIED", 0);
 	
 	if (STEPSIZE != 1)
 		catn("DEBUG: STEPSIZE is not equal to 1: running a coarse simulation!.");
@@ -92,9 +95,13 @@ initialize() {
 	log.addGenerationStage();
 	log.addPopulationSize();
 	log.addCustomColumn("num_juveniles", "NUM_JUVENILES;");
+	log.addCustomColumn("num_patches",
+		"NUM_OCCUPIED;");
+// BUG: https://github.com/MesserLab/SLiM/issues/243
+//		"sum(summarizeIndividuals(p1.individuals, c(LAST_HABITAT.width, LAST_HABITAT.height), p1.spatialBounds, operation='1;', gather='sum') > 0);");
 	if (DEBUG) {
 		log.addMeanSDColumns("num_hops", "p1.individuals.getValue('num_hops');");
-		log.addCustomColumn("prop_dispersers", "mean(p1.individuals.getValue('distance') > sqrt(2) * MAP_RES);");
+		log.addCustomColumn("prop_dispersers", "p1.individualCount > 0 ? 0 else mean(p1.individuals.getValue('distance') > sqrt(2) * MAP_RES);");
 		log.addMeanSDColumns("distance", "p1.individuals.getValue('distance');");
 		log.addCustomColumn("children_mean", "MEAN_CHILDREN;");
 		log.addCustomColumn("children_sd", "SD_CHILDREN;");
@@ -107,6 +114,13 @@ s1 999 late() {
 	catn("Generation " + sim.generation + ": Interpolating from " + RASTERS[RASTER_NUM - 1] + "(" + (RASTER_NUM-1) + ") to " + RASTERS[RASTER_NUM] + "(" + RASTER_NUM + ").");
 	defineGlobal("LAST_HABITAT", Image(RASTERS[RASTER_NUM - 1]));
 	defineGlobal("NEXT_HABITAT", Image(RASTERS[RASTER_NUM]));
+}
+
+// Output map of population
+s98 2000 late() {
+	patches = summarizeIndividuals(p1.individuals, c(LAST_HABITAT.width, LAST_HABITAT.height), p1.spatialBounds, operation="1;", gather="sum");
+	patch_map = Image(asFloat(patches > 0));
+	patch_map.write(IMAGEPATH + sim.generation + ".png");
 }
 
 // End of simulation
@@ -126,10 +140,13 @@ s99 2000 late() {
 	if (length(switch_gens) > 0) sim.rescheduleScriptBlock(s1, generations=switch_gens);
 	
 	sim.rescheduleScriptBlock(s99, generations=NUM_GENS);
+
+	// write out snapshots of the population
+	sim.rescheduleScriptBlock(s98, generations=NUM_GENS);
 }
 
 1 late() {
-	// FOR DEBUGGING: to see an extra map
+	// FOR DEBUGGING: to see extra map
 	if (DEBUG) sim.addSubpop("p2", 1);
 }
 
@@ -142,40 +159,44 @@ s99 2000 late() {
 	num_init = asInteger(PROP_INIT * num_patches);
 	N = asInteger(K * num_init * MAP_RES_X * MAP_RES_Y);
 	if (N > MAX_SIZE) stop("Too many individuals: " + N);
-	sim.addSubpop("p1", N);
-	
 	defineGlobal("DH", rep(1.0, length(habitat.floatG)));
-	for (p in sim.subpopulations) {
-		p.setSpatialBounds(c(0.0, 0.0, width, height));
-		p.defineSpatialMap('habitat', 'xy', habitat.floatG,
-			valueRange=c(0.0, 1.0), colors=c("#000000", "#FFFFFF"));
-		p.defineSpatialMap('suitability', 'xy', suitability.floatK,
-			valueRange=c(0.0, 1.0), colors=c("#000000", "#FFFFFF"));
-	}
-	cat("Setting up a population with " + N + " individuals");
-	cat(" and spatial bounds of " + paste(p1.spatialBounds));
-	catn(" and " + num_patches + " patches of good habitat.");
 	
-	good = matrix(rep(-1.0, num_init*2), nrow=num_init);
-	for (k in seqLen(num_init)) {
-		pos = p1.pointUniform();
-		while (p1.spatialMapValue('habitat', pos) < EPS) {
-			pos = p1.pointUniform();
+	if (RELOAD_FILE != "") {
+		sim.readFromPopulationFile(RELOAD_FILE);
+	} else {
+		sim.addSubpop("p1", N);
+		for (p in sim.subpopulations) {
+			p.setSpatialBounds(c(0.0, 0.0, width, height));
+			p.defineSpatialMap('habitat', 'xy', habitat.floatG,
+				valueRange=c(0.0, 1.0), colors=c("#000000", "#FFFFFF"));
+			p.defineSpatialMap('suitability', 'xy', suitability.floatK,
+				valueRange=c(0.0, 1.0), colors=c("#000000", "#FFFFFF"));
 		}
-		good[k,] = pos;
-	}
-	// need to randomize order since the females are the first half of the vector
-	for (k in sample(seqLen(p1.individualCount), p1.individualCount)) {
-		ind = p1.individuals[k];
-		pos = good[sample(seqLen(nrow(good)), size=1),];
-		assert(p1.spatialMapValue('habitat', pos) > EPS);
-		ind.setSpatialPosition(
-			pos
-			+ rnorm(2, sd=SIGMA)
-			);
-		if (DEBUG) {
-			for (key in c("num_hops", "num_hop_tries", "children", "distance")) {
-				ind.setValue(key, 0);
+		cat("Setting up a population with " + N + " individuals");
+		cat(" and spatial bounds of " + paste(p1.spatialBounds));
+		catn(" and " + num_patches + " patches of good habitat.");
+		
+		good = matrix(rep(-1.0, num_init*2), nrow=num_init);
+		for (k in seqLen(num_init)) {
+			pos = p1.pointUniform();
+			while (p1.spatialMapValue('habitat', pos) < EPS) {
+				pos = p1.pointUniform();
+			}
+			good[k,] = pos;
+		}
+		// need to randomize order since the females are the first half of the vector
+		for (k in sample(seqLen(p1.individualCount), p1.individualCount)) {
+			ind = p1.individuals[k];
+			pos = good[sample(seqLen(nrow(good)), size=1),];
+			assert(p1.spatialMapValue('habitat', pos) > EPS);
+			ind.setSpatialPosition(
+				pos
+				+ rnorm(2, sd=SIGMA)
+				);
+			if (DEBUG) {
+				for (key in c("num_hops", "num_hop_tries", "children", "distance")) {
+					ind.setValue(key, 0);
+				}
 			}
 		}
 	}
@@ -188,14 +209,12 @@ s99 2000 late() {
 	} else {
 		a = 1.0;
 	}
-	for (p in sim.subpopulations) {
-		defineGlobal("DH", 1 - abs(1 - (abs(DH + rnorm(length(DH), 0, HABITAT_SIGMA)) % 2)));
-		h = ( (1-a) * LAST_HABITAT.floatG + a * NEXT_HABITAT.floatG )
-			* DH  // gradual habitat change
-			* rgamma(length(DH), mean=YEAR_MEAN, shape=YEAR_SHAPE);  // randomness due to goodness of the year
-		p.defineSpatialMap('habitat', 'xy', h,
-			valueRange=c(0.0, 1.0), colors=c("#000000", "#FFFFFF"));
-	}
+	defineGlobal("DH", 1 - abs(1 - (abs(DH + rnorm(length(DH), 0, HABITAT_SIGMA)) % 2)));
+	h = ( (1-a) * LAST_HABITAT.floatG + a * NEXT_HABITAT.floatG )
+		* DH  // gradual habitat change
+		* rgamma(length(DH), mean=YEAR_MEAN, shape=YEAR_SHAPE);  // randomness due to goodness of the year
+	sim.subpopulations.defineSpatialMap('habitat', 'xy', h,
+		valueRange=c(0.0, 1.0), colors=c("#000000", "#FFFFFF"));
 }
 
 reproduction(p1, "F") {
@@ -276,4 +295,14 @@ late() {
 1: late() {
 	catn("Generation: " + sim.generation + "  late: " + p1.individualCount);
 	if (p1.individualCount == 0 | p1.individualCount > MAX_SIZE) stop("Stopping: " + p1.individualCount + " individuals.");
+}
+
+1: late() {
+	// show map of occupied patches in SLiMgui
+	if (DEBUG) {
+		patches = summarizeIndividuals(p1.individuals, c(LAST_HABITAT.width, LAST_HABITAT.height), p1.spatialBounds, operation="1;", gather="sum");
+		sim.subpopulations.defineSpatialMap('occupied', 'xy', patches,
+			valueRange=c(0.0, 1.0), colors=c("#000000", "#FFFFFF"));
+		defineGlobal("NUM_OCCUPIED", sum(patches > 0));
+	}
 }

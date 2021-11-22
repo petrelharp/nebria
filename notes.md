@@ -1,3 +1,12 @@
+# Nov 15:
+
+- count number of occupied patches
+- use that for ABC along with genomic data
+- want population (effective) size to decline with time
+- main goal: recolonization path for where beetles came from:
+    where were ancestors of today's beetles living at 21kya
+- want to learn demographic history: how many beetles across time?
+
 # Sep 27:
 
 - add stochasticity for goodness of patch: perhaps draw independently by year 
