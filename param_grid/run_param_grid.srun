@@ -7,7 +7,7 @@
 #SBATCH --ntasks=1                      ### Number of tasks per array job
 #SBATCH --array=0-300%24                ### Array index
 #SBATCH --cpus-per-task=1               ### Number of CPU cores per task
-#SBATCH --mem=32G
+#SBATCH --mem=48G
 
 slim -v
 
