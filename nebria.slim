@@ -27,12 +27,13 @@ initialize() {
 			"LH0_4.png", // note that LH0_4 looks like today (but lower-res)
 			"current.png"),
 		"RASTER_BBOX", c(-119.9996, -117.99993, 35.9995, 38.01215), // the output from bbox()
-		"RASTER_SWITCH_TIMES_AGO", c(19, 16, 14, 10, 6, 2, 0) * 1000, // converted to generations below
+		"RASTER_SWITCH_TIMES_AGO", c(19, 16, 14, 10, 6, 2, 0, INF) * 1000, // j-th element is the time ago that the map is pure RASTERS[j]
 		"YEAR_SHAPE", 1.5, // shape parameter in gamma distribution of year effects
 		"DEBUG", T,
-		"STEPSIZE", 1,  // years per generation (to make debugging go faster)
+		"STEPSIZE", 100,  // years per generation (to make debugging go faster)
 		"MAX_SIZE", 2e5,
-		"NUM_GENS", 200,
+		"NUM_GENS", 30,  // number of generations to run for
+		"START_TIME_AGO", 2500, // number of years ago to start the simulation at
 		"OUTDIR", ".",
 		"RELOAD_FILE", "",
 		"OCCUPIED_THRESHOLD", 10
@@ -60,7 +61,6 @@ initialize() {
 	
 	defineConstant("K", POP_SIZE / (MAP_RES_X * MAP_RES_Y));  // mean density per unit area
 	defineConstant("MAP_RES", max(MAP_RES_X, MAP_RES_Y));
-	defineConstant("RASTER_SWITCH_STEPS", asInteger(NUM_GENS - RASTER_SWITCH_TIMES_AGO / STEPSIZE));
 	defineConstant("SIGMA", DISPERSAL_SIGMA / sqrt(MEAN_HOPS));
 	defineConstant("YEAR_MEAN", exp(1/(2*YEAR_SHAPE)) / YEAR_SHAPE); // defined so that mean(log(year effect)) is near zero
 	
@@ -70,10 +70,14 @@ initialize() {
 	initializeGenomicElement(g1, 0, L-1);
 	initializeRecombinationRate(1e-8);
 	
+	defineGlobal("YEAR_AGO", START_TIME_AGO); // counter keeping track of "how many years ago is it"
 	defineGlobal("TOTAL", 0);
-	defineGlobal("RASTER_NUM", min(which(RASTER_SWITCH_TIMES_AGO > 0)));
-	defineGlobal("LAST_HABITAT", Image(RASTERS[max(0, RASTER_NUM - 1)]));
-	defineGlobal("NEXT_HABITAT", Image(RASTERS[RASTER_NUM]));
+	defineGlobal("NEXT_RASTER_NUM", 0);
+	while (RASTER_SWITCH_TIMES_AGO[NEXT_RASTER_NUM] >= YEAR_AGO) {
+		defineGlobal("NEXT_RASTER_NUM", NEXT_RASTER_NUM + 1);
+	}
+	defineGlobal("LAST_HABITAT", Image(RASTERS[max(0, NEXT_RASTER_NUM - 1)]));
+	defineGlobal("NEXT_HABITAT", Image(RASTERS[NEXT_RASTER_NUM]));
 	defineGlobal("NUM_JUVENILES", 0);
 	defineGlobal("MEAN_CHILDREN", 0);
 	defineGlobal("SD_CHILDREN", 0);
@@ -95,6 +99,7 @@ initialize() {
 	log.addGeneration();
 	log.addGenerationStage();
 	log.addPopulationSize();
+	log.addCustomColumn("years_ago", "YEAR_AGO;");
 	log.addCustomColumn("num_juveniles", "NUM_JUVENILES;");
 	log.addCustomColumn("num_patches",
 		"NUM_OCCUPIED;");
@@ -107,14 +112,6 @@ initialize() {
 		log.addCustomColumn("children_mean", "MEAN_CHILDREN;");
 		log.addCustomColumn("children_sd", "SD_CHILDREN;");
 	}
-}
-
-s1 999 late() {
-	// switch rasters
-	defineGlobal("RASTER_NUM", RASTER_NUM + 1);
-	catn("Generation " + sim.generation + ": Interpolating from " + RASTERS[RASTER_NUM - 1] + "(" + (RASTER_NUM-1) + ") to " + RASTERS[RASTER_NUM] + "(" + RASTER_NUM + ").");
-	defineGlobal("LAST_HABITAT", Image(RASTERS[RASTER_NUM - 1]));
-	defineGlobal("NEXT_HABITAT", Image(RASTERS[RASTER_NUM]));
 }
 
 // Output map of population
@@ -133,12 +130,11 @@ s99 2000 late() {
 
 // Schedule switching of rasters and output
 1 late() {
-	this_num = max(0, RASTER_NUM - 1);
+	this_num = max(0, NEXT_RASTER_NUM - 1);
+	next_num = min(length(RASTERS) - 1, NEXT_RASTER_NUM);
 	catn("Starting with raster" + RASTERS[this_num]
-		+ "(" + this_num + ") and interpolating to " + RASTERS[RASTER_NUM]
-		+ "(" + RASTER_NUM + ").");
-	switch_gens = RASTER_SWITCH_STEPS[RASTER_SWITCH_STEPS > 0 & RASTER_SWITCH_STEPS < NUM_GENS];
-	if (length(switch_gens) > 0) sim.rescheduleScriptBlock(s1, generations=switch_gens);
+		+ "(" + this_num + ") and interpolating to " + RASTERS[NEXT_RASTER_NUM]
+		+ "(" + NEXT_RASTER_NUM + ").");
 	
 	sim.rescheduleScriptBlock(s99, generations=NUM_GENS);
 
@@ -203,12 +199,21 @@ s99 2000 late() {
 	}
 }
 
-2: late() {
+1: late() {
 	// update spatial map
-	if (RASTER_NUM > 0) {
-		a = (sim.generation - RASTER_SWITCH_STEPS[RASTER_NUM - 1])/ (RASTER_SWITCH_STEPS[RASTER_NUM] - RASTER_SWITCH_STEPS[RASTER_NUM - 1]);
+	if (NEXT_RASTER_NUM + 1 < length(RASTERS) & YEAR_AGO < RASTER_SWITCH_TIMES_AGO[NEXT_RASTER_NUM]) {
+		// switch rasters
+		defineGlobal("NEXT_RASTER_NUM", NEXT_RASTER_NUM + 1);
+		catn("Generation " + sim.generation + ": Interpolating from " + RASTERS[NEXT_RASTER_NUM - 1]
+			+ "(" + (NEXT_RASTER_NUM-1) + ") to " + RASTERS[NEXT_RASTER_NUM] + "(" + NEXT_RASTER_NUM + ").");
+		defineGlobal("LAST_HABITAT", Image(RASTERS[NEXT_RASTER_NUM - 1]));
+		defineGlobal("NEXT_HABITAT", Image(RASTERS[NEXT_RASTER_NUM]));
+	}
+	if (NEXT_RASTER_NUM > 0 & NEXT_RASTER_NUM + 1 < length(RASTERS)) {
+		a = (YEAR_AGO - RASTER_SWITCH_TIMES_AGO[NEXT_RASTER_NUM - 1])/ (RASTER_SWITCH_TIMES_AGO[NEXT_RASTER_NUM] - RASTER_SWITCH_TIMES_AGO[NEXT_RASTER_NUM - 1]);
+		assert(a >= 0.0 & a <= 1.0);
 	} else {
-		a = 1.0;
+		a = asFloat(NEXT_RASTER_NUM + 1 < length(RASTERS));
 	}
 	defineGlobal("DH", 1 - abs(1 - (abs(DH + rnorm(length(DH), 0, HABITAT_SIGMA)) % 2)));
 	h = ( (1-a) * LAST_HABITAT.floatG + a * NEXT_HABITAT.floatG )
@@ -289,12 +294,12 @@ late() {
 }
 
 2: early() {
-	catn("Generation: " + sim.generation + " early: " + p1.individualCount);
+	catn("Generation: " + sim.generation + " year ago: " + YEAR_AGO + " early: " + p1.individualCount);
 	if (p1.individualCount == 0 | p1.individualCount > MAX_SIZE) stop("Stopping: " + p1.individualCount + " individuals.");
 }
 
 1: late() {
-	catn("Generation: " + sim.generation + "  late: " + p1.individualCount);
+	catn("Generation: " + sim.generation + " year ago: " + YEAR_AGO + "  late: " + p1.individualCount);
 	if (p1.individualCount == 0 | p1.individualCount > MAX_SIZE) stop("Stopping: " + p1.individualCount + " individuals.");
 }
 
@@ -306,4 +311,9 @@ late() {
 			valueRange=c(0.0, 1.0), colors=c("#000000", "#FFFFFF"));
 		defineGlobal("NUM_OCCUPIED", sum(patches > OCCUPIED_THRESHOLD));
 	}
+}
+
+1: late() {
+	// increment year counter - this block should be listed last!
+	defineGlobal("YEAR_AGO", YEAR_AGO - STEPSIZE);
 }
