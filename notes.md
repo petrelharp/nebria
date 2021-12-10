@@ -1,3 +1,17 @@
+# Dec 6:
+
+- Yosemite predictions with a GLM come out to 122 for the total range
+- but this is on the low end, probably we want between 100 and 500;
+    we could do a Bayesian thing to get a better posterior,
+    but why not just uniform over that range
+
+# Nov 22
+
+- do ABC with just patch number, extrapolating from Yosemite to a number of patches
+    for the whole range using the SDM
+- change patch number to get number of pixels with more than 10 individuals
+- ABC package abc
+
 # Nov 15:
 
 - count number of occupied patches

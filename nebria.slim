@@ -20,21 +20,22 @@ initialize() {
 		"SUITABILITY_MAP", "geo_only_suitability.png", // suitability raster
 		// the habitat is entirely RASTER[k] at RASTER_SWITCH_TIMES_AGO[k]
 		"RASTERS", c("LGM17_21.png",
-		"HS15_17.png",
-		"BA13_15.png",
-		"EH8_12.png",
-		"MH4_8.png",
-		"LH0_4.png", // note that LH0_4 looks like today (but lower-res)
-		"current.png"),
+			"HS15_17.png",
+			"BA13_15.png",
+			"EH8_12.png",
+			"MH4_8.png",
+			"LH0_4.png", // note that LH0_4 looks like today (but lower-res)
+			"current.png"),
 		"RASTER_BBOX", c(-119.9996, -117.99993, 35.9995, 38.01215), // the output from bbox()
 		"RASTER_SWITCH_TIMES_AGO", c(19, 16, 14, 10, 6, 2, 0) * 1000, // converted to generations below
 		"YEAR_SHAPE", 1.5, // shape parameter in gamma distribution of year effects
 		"DEBUG", T,
-		"STEPSIZE", 100,  // years per generation (to make debugging go faster)
+		"STEPSIZE", 1,  // years per generation (to make debugging go faster)
 		"MAX_SIZE", 2e5,
 		"NUM_GENS", 200,
 		"OUTDIR", ".",
-		"RELOAD_FILE", ""
+		"RELOAD_FILE", "",
+		"OCCUPIED_THRESHOLD", 10
 		);
 	paramfile = defaults.getValue("OUTDIR") + "/" + "params.json";
 	if (fileExists(paramfile)) {
@@ -98,7 +99,7 @@ initialize() {
 	log.addCustomColumn("num_patches",
 		"NUM_OCCUPIED;");
 // BUG: https://github.com/MesserLab/SLiM/issues/243
-//		"sum(summarizeIndividuals(p1.individuals, c(LAST_HABITAT.width, LAST_HABITAT.height), p1.spatialBounds, operation='1;', gather='sum') > 0);");
+//		"sum(summarizeIndividuals(p1.individuals, c(LAST_HABITAT.width, LAST_HABITAT.height), p1.spatialBounds, operation='1;', gather='sum') > OCCUPIED_THRESHOLD);");
 	if (DEBUG) {
 		log.addMeanSDColumns("num_hops", "p1.individuals.getValue('num_hops');");
 		log.addCustomColumn("prop_dispersers", "p1.individualCount > 0 ? 0 else mean(p1.individuals.getValue('distance') > sqrt(2) * MAP_RES);");
@@ -118,7 +119,7 @@ s1 999 late() {
 
 // Output map of population
 s98 2000 late() {
-	patches = summarizeIndividuals(p1.individuals, c(LAST_HABITAT.width, LAST_HABITAT.height), p1.spatialBounds, operation="1;", gather="sum");
+	patches = summarizeIndividuals(p1.individuals, c(LAST_HABITAT.width, LAST_HABITAT.height), p1.spatialBounds, operation="length(individuals);");
 	patch_map = Image(asFloat(patches > 0));
 	patch_map.write(IMAGEPATH + sim.generation + ".png");
 }
@@ -300,9 +301,9 @@ late() {
 1: late() {
 	// show map of occupied patches in SLiMgui
 	if (DEBUG) {
-		patches = summarizeIndividuals(p1.individuals, c(LAST_HABITAT.width, LAST_HABITAT.height), p1.spatialBounds, operation="1;", gather="sum");
+		patches = summarizeIndividuals(p1.individuals, c(LAST_HABITAT.width, LAST_HABITAT.height), p1.spatialBounds, operation="length(individuals);");
 		sim.subpopulations.defineSpatialMap('occupied', 'xy', patches,
 			valueRange=c(0.0, 1.0), colors=c("#000000", "#FFFFFF"));
-		defineGlobal("NUM_OCCUPIED", sum(patches > 0));
+		defineGlobal("NUM_OCCUPIED", sum(patches > OCCUPIED_THRESHOLD));
 	}
 }
