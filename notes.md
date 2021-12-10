@@ -1,3 +1,10 @@
+# Dec 9:
+
+- add gilia to repo
+- do we want to use suitability??
+- time steps are wrong (done)
+- put parameter ranges somewhere (done)
+
 # Dec 6:
 
 - Yosemite predictions with a GLM come out to 122 for the total range
