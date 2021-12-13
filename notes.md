@@ -1,3 +1,14 @@
+# Dec 13:
+
+- will need to recapitate with yi-ming's msprime model
+- we have genomic scan without demographic inference correction: should we correct somehow?
+    The genomic scan is overlapping with (a) a PCA-based version; (b) omega-hat, and
+    (c) environmental associations.
+- might want to add selection on a quantitative trait after to check that they are identified
+    by the scans is doing good
+- genome scans does get genes associated with hypoxia in the intersection of the three methods
+- assoc with environment: clock genes show up; maybe because of phenology?
+
 # Dec 9:
 
 - add gilia to repo
