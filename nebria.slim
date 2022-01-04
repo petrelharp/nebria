@@ -294,12 +294,12 @@ late() {
 }
 
 2: early() {
-	catn("Generation: " + sim.generation + " year ago: " + YEAR_AGO + " early: " + p1.individualCount);
+	catn("Generation: " + sim.generation + " year ago: " + YEAR_AGO + " early: " + p1.individualCount + " patches: " + NUM_OCCUPIED);
 	if (p1.individualCount == 0 | p1.individualCount > MAX_SIZE) stop("Stopping: " + p1.individualCount + " individuals.");
 }
 
 1: late() {
-	catn("Generation: " + sim.generation + " year ago: " + YEAR_AGO + "  late: " + p1.individualCount);
+	catn("Generation: " + sim.generation + " year ago: " + YEAR_AGO + "  late: " + p1.individualCount + " patches: " + NUM_OCCUPIED);
 	if (p1.individualCount == 0 | p1.individualCount > MAX_SIZE) stop("Stopping: " + p1.individualCount + " individuals.");
 }
 
