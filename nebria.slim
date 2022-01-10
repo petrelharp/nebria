@@ -27,7 +27,15 @@ initialize() {
 			"LH0_4.png", // note that LH0_4 looks like today (but lower-res)
 			"current.png"),
 		"RASTER_BBOX", c(-119.9996, -117.99993, 35.9995, 38.01215), // the output from bbox()
-		"RASTER_SWITCH_TIMES_AGO", c(19, 16, 14, 10, 6, 2, 0, INF) * 1000, // j-th element is the time ago that the map is pure RASTERS[j]
+		"RASTER_SWITCH_TIMES_AGO", c(
+			21, // LGM, 21Kya from Yi-Ming
+			(17 + 14.7)/2, // HS, Heinrich Stadial
+			(14.7 + 12.9)/2, // BA, Bølling-Allerød
+			(11.7 + 8.326)/2, // EH, early-Holocene
+			(8.326 + 4.2)/2, // MH, mid-Holocene
+			(4.2 + 0.3)/2, // LH, late-Holocene
+			0,  // current
+			INF) * 1000, // j-th element is the time ago that the map is pure RASTERS[j]
 		"YEAR_SHAPE", 1.5, // shape parameter in gamma distribution of year effects
 		"DEBUG", T,
 		"STEPSIZE", 100,  // years per generation (to make debugging go faster)
