@@ -2,12 +2,11 @@ library(jsonlite)
 
 default_params  <- fromJSON("params.json")
 default_params$MAX_SIZE <- 1e6
-default_params$NUM_GENS <- 40
-
+default_params$NUM_GENS <- 5
 values <- list(
-    POP_SIZE = 10 * 2^c(2, 5),
+    POP_SIZE = c(40, 320), 
     DISPERSAL_SIGMA = c(0.2, 2),
-    P_D = 2^-c(2, 6),
+    P_D = 2^-c(1, 6),
     YEAR_SHAPE = c(1, 2)
 )
 
