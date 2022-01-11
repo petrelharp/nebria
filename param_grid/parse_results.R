@@ -1,4 +1,4 @@
-runs <- read.csv("param_values.csv")
+runs <- read.csv("sim_runs/param_values.csv")
 
 for (x in c("run", "slope", "slope_patches", "init_indivs", "init_patches", "num_gens")) {
     runs[[x]] <- NA
@@ -9,7 +9,7 @@ new_cols <- c("num_individuals", "num_juveniles", "num_patches", "num_hops_mean"
 for (x in new_cols) runs[[x]] <- NA
 
 for (j in 1:nrow(runs)) {
-    logs <- list.files(as.character(runs$id[j]), "sim_.*.log", full.names=TRUE)
+    logs <- list.files(paste0("sim_runs/", runs$id[j]), "sim_.*.log", full.names=TRUE)
     if (length(logs) == 1) {
         runs$run[j] <- logs[1]
         x <- read.csv(logs[1], comment="#")
@@ -26,4 +26,4 @@ for (j in 1:nrow(runs)) {
     }
 }
 
-write.csv(runs, file="results.csv", row.names=FALSE)
+write.csv(runs, file="sim_runs/results.csv", row.names=FALSE)

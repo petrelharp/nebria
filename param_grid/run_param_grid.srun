@@ -11,7 +11,7 @@
 
 slim -v
 
-DIRS=($(find . -maxdepth 1 -type 'd' -name 'run*'))
+DIRS=($(find sim_runs -mindepth 1 -type 'd' -name 'run*'))
 DIR=${DIRS[$SLURM_ARRAY_TASK_ID]}
 
 echo "Doing:"

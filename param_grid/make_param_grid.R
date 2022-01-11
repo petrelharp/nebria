@@ -17,7 +17,7 @@ param_values <- data.frame(lapply(base_param_values, function (x) {
     }))
 param_values$id <- sprintf("run%06d", 1:nrow(param_values))
 
-basedir <- "."
+basedir <- "./sim_runs"
 dir.create(basedir, showWarnings=FALSE)
 write.csv(param_values, file=file.path(basedir, "param_values.csv"), row.names=FALSE)
 writeLines(toJSON(default_params, pretty=TRUE), file.path(basedir, "default_params.json"))
