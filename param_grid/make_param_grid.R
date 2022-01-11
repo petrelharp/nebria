@@ -35,7 +35,7 @@ for (j in 1:nrow(param_values)) {
     }
     writeLines(toJSON(params, pretty=TRUE), file.path(this_dir, "params.json"))
     for (f in setup_files) {
-        file.symlink(file.path("..", "..", f), file.path(this_dir, f))
+        file.symlink(file.path("..", "..", "..", f), file.path(this_dir, f))
     }
 }
 
