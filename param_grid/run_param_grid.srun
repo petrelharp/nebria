@@ -2,12 +2,12 @@
 #SBATCH -A kernlab
 #SBATCH --partition=kern                ### Partition
 #SBATCH --job-name=param_grid           ### Job Name
-#SBATCH --time=4:00:00                 ### WallTime
+#SBATCH --time=48:00:00                 ### WallTime
 #SBATCH --nodes=1                       ### Number of Nodes
 #SBATCH --ntasks=1                      ### Number of tasks per array job
 #SBATCH --array=0-300%24                ### Array index
 #SBATCH --cpus-per-task=1               ### Number of CPU cores per task
-#SBATCH --mem=4G
+#SBATCH --mem=48G
 
 slim -v
 
