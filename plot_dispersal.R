@@ -1,7 +1,7 @@
 library(raster)
 
-suitability <- raster::raster("small/geo_only_suitability.tif")
-habitat <- png::readPNG("small/BA13_15.png")
+suitability <- raster::raster("small/Geo_only_slope_aspect_drainage.png")
+habitat <- png::readPNG("small/12900_14700_BA.png")
 all_habitat <- t(habitat[rev(seq_len(nrow(habitat))),,1])
 habitat <- t(habitat[rev(seq_len(nrow(habitat))),,2])
 

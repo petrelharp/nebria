@@ -17,20 +17,23 @@ initialize() {
 		"PROP_INIT", 0.1, // proportion of initially occupied patches
 		"HABITAT_SIGMA", 1/sqrt(200), // SD of how much habitat quality changes per year
 		"L", 1e6, // length of the genome
-		"SUITABILITY_MAP", "geo_only_suitability.png", // suitability raster
+		"SUITABILITY_MAP", "geo_layers/Geo_only_slope_aspect_drainage.png", // suitability raster
 		// the habitat is entirely RASTER[k] at RASTER_SWITCH_TIMES_AGO[k]
-		"RASTERS", c("LGM17_21.png",
-			"HS15_17.png",
-			"BA13_15.png",
-			"EH8_12.png",
-			"MH4_8.png",
-			"LH0_4.png", // note that LH0_4 looks like today (but lower-res)
-			"current.png"),
+		"RASTERS",
+		   c("geo_layers/21000_LGM_CCSM.tif",
+			  "geo_layers/14700_17000_HS.tif",
+			  "geo_layers/12900_14700_BA.tif",
+			  "geo_layers/11700_12900_YDS.tif",
+			  "geo_layers/08326-11700_EH.png",
+			  "geo_layers/04200_08326_MH.png",
+			  "geo_layers/00300-04200_LH.png", // LH looks much like today (but lower-res)
+			  "geo_layers/current.png"),
 		"RASTER_BBOX", c(-119.9996, -117.99993, 35.9995, 38.01215), // the output from bbox()
 		"RASTER_SWITCH_TIMES_AGO", c(
 			21, // LGM, 21Kya from Yi-Ming
 			(17 + 14.7)/2, // HS, Heinrich Stadial
 			(14.7 + 12.9)/2, // BA, Bølling-Allerød
+			(12.9 + 11.7)/2, // YDS, younger Dryas
 			(11.7 + 8.326)/2, // EH, early-Holocene
 			(8.326 + 4.2)/2, // MH, mid-Holocene
 			(4.2 + 0.3)/2, // LH, late-Holocene
@@ -84,6 +87,8 @@ initialize() {
 	while (RASTER_SWITCH_TIMES_AGO[NEXT_RASTER_NUM] >= YEAR_AGO) {
 		defineGlobal("NEXT_RASTER_NUM", NEXT_RASTER_NUM + 1);
 	}
+	catn(RASTERS);
+	catn(NEXT_RASTER_NUM + " : " + length(RASTERS));
 	defineGlobal("LAST_HABITAT", Image(RASTERS[max(0, NEXT_RASTER_NUM - 1)]));
 	defineGlobal("NEXT_HABITAT", Image(RASTERS[NEXT_RASTER_NUM]));
 	defineGlobal("NUM_JUVENILES", 0);
