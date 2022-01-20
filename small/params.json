@@ -1,0 +1,18 @@
+{
+    "DEBUG" : true,
+    "NUM_GENS" : 100,
+    "STEPSIZE" : 1,
+    "POP_SIZE" : 10,
+    "P_D" : 0.01,
+    "DISPERSAL_SIGMA" : 1.0,
+    "YEAR_SHAPE" : 1.5,
+    "README" : [
+        "Default parameter values for parameters we'd like to adjust:",
+        " NUM_GENS is number of generations to run for",
+        " STEPSIZE is the number of years per generation",
+        " POP_SIZE is mean number per patch",
+        " P_D is probability of dispersal",
+        " DISPERSAL_SIGMA is SD of dispersal distance",
+        " YEAR_SHAPE is the shape parameter in year-to-year variability"
+    ]
+}

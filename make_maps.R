@@ -5,6 +5,7 @@ library(png)
 
 # proportion of pixels which should not be zeroed out
 keep_prop <- 1/8
+suitability <- "Geo_only_slope_aspect_drainage"
 
 set.seed(123)
 
@@ -16,7 +17,7 @@ samples <- SpatialPointsDataFrame(
 )
 
 
-for (fn in c("geo_only_suitability", "glacier_boundary_fill")) {
+for (fn in file.path("geo_layers", c(suitability, "glacier_boundary_fill"))) {
     x <- raster(paste0(fn, ".tif"))
     png(file=paste0(fn, "_with_axes.png"),
         width=48*dim(x)[1]*6/max(dim(x)),
@@ -30,9 +31,18 @@ for (fn in c("geo_only_suitability", "glacier_boundary_fill")) {
 }
 
 # Project all to align with "current", which is a factor of 5
-tifs <- c("current.tif", "LH0_4.tif", "MH4_8.tif", "EH8_12.tif", "BA13_15.tif", "HS15_17.tif", "LGM17_21.tif")
+tifs <- file.path("geo_layers",
+                  c("current.tif",
+                    "00300-04200_LH.tif",
+                    "04200_08326_MH.tif",
+                    "08326-11700_EH.tif",
+                    "11700_12900_YDS.tif",
+                    "12900_14700_BA.tif",
+                    "14700_17000_HS.tif",
+                    "21000_LGM_CCSM.tif")
+)
 rasters <- lapply(tifs, raster)
-names(rasters) <- gsub(".tif$", "", tifs)
+names(rasters) <- basename(gsub(".tif$", "", tifs))
 for (k in 2:length(tifs)) {
     rasters[[k]] <- projectRaster(rasters[[k]], rasters[['current']])
     stopifnot(res(rasters[[k]]) == res(rasters[['current']]))
@@ -103,11 +113,11 @@ rasters <- lapply(rasters, mask, wm_box, inverse=TRUE)
 # remove the glacier from the oldest time
 glacier_mask <- 
     projectRaster(
-        raster("glacier_boundary_fill.tif"),
+        raster("geo_layers/glacier_boundary_fill.tif"),
         rasters[["current"]],
         method='ngb',
     )
-rasters[["LGM17_21"]] <- mask(rasters[["LGM17_21"]], glacier_mask, maskvalue=2, updatevalue=0.0)
+rasters[["21000_LGM_CCSM"]] <- mask(rasters[["21000_LGM_CCSM"]], glacier_mask, maskvalue=2, updatevalue=0.0)
 
 ### choose actually good patches, which are common across time periods
 keep <- rasters[['current']]
@@ -117,7 +127,7 @@ for (k in seq_along(rasters)) {
     fn <- names(rasters)[k]
     x <- rasters[[k]]
     # version with axes
-    png(file=paste0(fn, "_with_axes.png"),
+    png(file=file.path("geo_layers", paste0(fn, "_with_axes.png")),
         width=144*dim(x)[1]*12/max(dim(x)),
         height=144*dim(x)[2]*12/max(dim(x)),
         res=48,
@@ -134,7 +144,7 @@ for (k in seq_along(rasters)) {
     xm <- as.matrix(x)
     xmk <- as.matrix(x * keep)
     am <- array(c(xm, xmk, xm * 0.0), dim=c(dim(xm), 3))
-    png::writePNG(am, paste0(fn, ".png"), dpi=24)
+    png::writePNG(am, file.path("geo_layers", paste0(fn, ".png")), dpi=24)
 }
 
 
@@ -152,8 +162,8 @@ small_box <- SpatialPolygons(list(Polygons(list(
             proj4string=CRS(proj4string(rasters[['current']]))
 )
 
-fn <- "geo_only_suitability"
-x <- crop(raster(paste0(fn, ".tif")), small_box)
+fn <- suitability
+x <- crop(raster(file.path("geo_layers", paste0(fn, ".tif"))), small_box)
 writeRaster(x, file.path(outdir, paste0(fn, ".tif")), overwrite=TRUE)
 png::writePNG(as.matrix(x), file.path(outdir, paste0(fn, ".png")), dpi=24)
 
@@ -183,8 +193,8 @@ yo_box <- SpatialPolygons(list(Polygons(list(
             proj4string=CRS(proj4string(rasters[['current']]))
 )
 
-fn <- "geo_only_suitability"
-x <- crop(raster(paste0(fn, ".tif")), small_box)
+fn <- suitability
+x <- crop(raster(file.path("geo_layers", paste0(fn, ".tif"))), small_box)
 writeRaster(x, file.path(outdir, paste0(fn, ".tif")), overwrite=TRUE)
 png::writePNG(as.matrix(x), file.path(outdir, paste0(fn, ".png")), dpi=24)
 
