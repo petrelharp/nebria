@@ -2,7 +2,7 @@ library(jsonlite)
 
 default_params  <- fromJSON("params.json")
 default_params$MAX_SIZE <- 1e6
-default_params$NUM_GENS <- 40 
+default_params$NUM_GENS <- 150 
 values <- list(
     POP_SIZE = c(40, 320), 
     DISPERSAL_SIGMA = c(0.2, 2),
@@ -10,11 +10,18 @@ values <- list(
     YEAR_SHAPE = c(1, 2)
 )
 
-nreps <- 300
-base_param_values <- do.call(expand.grid, values)
-param_values <- data.frame(lapply(base_param_values, function (x) {
-            c(x, min(x) + runif(nreps - length(x)) * (max(x) - min(x)))
-    }))
+# nreps <- 300
+# base_param_values <- do.call(expand.grid, values)
+# param_values <- data.frame(lapply(base_param_values, function (x) {
+#             c(x, min(x) + runif(nreps - length(x)) * (max(x) - min(x)))
+#     }))
+
+# Parameter values that give number of simulated patches close to 250
+param_values <- data.frame(POP_SIZE = c(69.7, 310.8, 111.9),
+                           DISPERSAL_SIGMA = c(1.87, 0.28, 0.75),
+                           P_D = c(0.48, 0.26, 0.08),
+                           YEAR_SHAPE = c(1.95, 1.59, 1.26))
+
 param_values$id <- sprintf("run%06d", 1:nrow(param_values))
 
 basedir <- "./sim_runs"
