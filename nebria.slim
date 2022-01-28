@@ -148,11 +148,13 @@ s99 2000 late() {
 	catn("Starting with raster" + RASTERS[this_num]
 		+ "(" + this_num + ") and interpolating to " + RASTERS[NEXT_RASTER_NUM]
 		+ "(" + NEXT_RASTER_NUM + ").");
+	output_negative = NUM_GENS - RASTER_SWITCH_TIMES_AGO/STEPSIZE;
 	
 	sim.rescheduleScriptBlock(s99, generations=NUM_GENS);
-
+	output_generations = asInteger(output_negative[output_negative > 0]);
+	catn("Writing out at" + output_generations);
 	// write out snapshots of the population
-	sim.rescheduleScriptBlock(s98, generations=NUM_GENS);
+	sim.rescheduleScriptBlock(s98, generations=output_generations);
 }
 
 1 late() {
