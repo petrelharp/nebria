@@ -1,4 +1,4 @@
-runs <- read.csv("results.csv")
+runs <- read.csv("sim_runs/results.csv")
 varnames <- c("POP_SIZE", "DISPERSAL_SIGMA", "P_D", "YEAR_SHAPE")
 
 pairs(runs[,c(varnames, "num_individuals", "num_patches", "slope", "slope_patches", "num_gens")],
