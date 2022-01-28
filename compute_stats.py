@@ -1,3 +1,5 @@
+import sys, os
+import warnings
 import pyslim, tskit, msprime
 import numpy as np
 import pandas as pd
@@ -7,7 +9,17 @@ import matplotlib.collections as mc
 
 rng = np.random.default_rng()
 
-ts_file = "nebria_3541435757397.trees"
+if len(sys.argv) != 2:
+    print(f"""
+    Usage:
+        python {sys.argv[0]} <input>.trees
+    """)
+    sys.exit()
+
+ts_file = sys.argv[1]
+if not os.path.isfile(ts_file):
+    raise ValueError(f"File {ts_file} does not exist.")
+
 basename = ts_file.replace(".trees", "")
 
 # maximum distance to match samples out to
@@ -20,6 +32,15 @@ patch_radius = 0.05  # km
 # mutation rate
 mut_rate = 1e-8
 
+print(
+        f"Reading in from {ts_file}, outputting to {basename}*\n"
+        f"  Merging patches of minimum size {min_patch_size} closer than {patch_radius} km of each other.\n"
+        f"  Maximum distane to match patches to observed locations: {max_dist} km."
+)
+
+# SLiM doesn't write out time units yet
+warnings.simplefilter('ignore', msprime.TimeUnitsMismatchWarning)
+
 # recapitate and mutate
 ts = pyslim.load(ts_file)
 ts = pyslim.recapitate(ts, ancestral_Ne=1e4, recombination_rate=1e-8)
@@ -29,7 +50,6 @@ ts = msprime.sim_mutations(
         model=msprime.SLiMMutationModel(type=0)
 )
 ts = pyslim.SlimTreeSequence(ts)
-
 
 real_locs = pd.read_csv("sample_locs.csv") .rename(
         columns=lambda x: x.replace(".", "_"),
@@ -59,20 +79,30 @@ def dist(x, y):
 # Find the distinct patches of simulated individuals:
 # `patches[xy]` will contain a list of the individual IDs
 #    at the patch with coordinates xy
+#
+# Strategy:
+# 1. Round locations to the nearest 10m
+# 2. Sort unique locations by number of individuals
+# 3. Merge any location with the largest other location within max_distance
+#    that is not itself merged to a larger location.
+# 4. Retain merged locations with at least min_patch_size individuals.
+
 
 patches = {}
 for i, (x, y) in enumerate(sample_locs):
-    j = (round(x, 2), round(y, 2))
-    if j not in patches:
-        patches[j] = []
-    patches[j].append(i)
+    xy = (round(x, 1), round(y, 1))
+    if xy not in patches:
+        patches[xy] = []
+    patches[xy].append(i)
 
 # now merge very close ones:
 _sorted_patches = list(patches.keys())
+# these will be in decreasing order of size
 _sorted_patches.sort(key = lambda x: len(patches[x]), reverse=True)
 _sorted_patches = np.array(_sorted_patches)
 _merge_with = {}
-for j, xy in enumerate(_sorted_patches):
+for j, xyn in enumerate(_sorted_patches):
+    xy = xyn[:2]
     if tuple(xy) not in _merge_with:
         pdist = dist(xy, _sorted_patches[(j+1):,:2])
         for k, d in zip(range(j+1, len(_sorted_patches)), pdist):
@@ -85,7 +115,7 @@ for xy1, xy0 in _merge_with.items():
     patches[xy0].extend(patches[xy1])
     del patches[xy1]
 
-# now only keep patches of size at least a certain size
+# now only keep patches of size at least min_patch_size
 patches = {a:b for a, b in patches.items() if len(b) >= min_patch_size}
 patch_xy = np.array([xy for xy in patches])
 patch_sizes = np.array([len(patches[tuple(a)]) for a in patch_xy])
@@ -95,7 +125,7 @@ real_locs["num_nearby"] = None
 real_locs["close_patch"] = -1  # BEWARE!!! but pandas has no reasonable missing data type
 for k in range(real_locs.shape[0]):
     pdist = dist(
-            patch_xy[:,:2],
+            patch_xy,
             np.array(real_locs.loc[real_locs.index[k], ["slim_x", "slim_y"]])
     )
     nearby = np.where(pdist <= max_dist)[0]
