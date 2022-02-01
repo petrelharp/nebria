@@ -3,6 +3,7 @@ library(jsonlite)
 default_params  <- fromJSON("params.json")
 default_params$MAX_SIZE <- 1e6
 default_params$NUM_GENS <- 21000 
+default_params$START_TIME_AGO <- 21000 
 values <- list(
     POP_SIZE = c(40, 320), 
     DISPERSAL_SIGMA = c(0.2, 2),
