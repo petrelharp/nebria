@@ -1,33 +1,49 @@
 library(jsonlite)
 
-default_params  <- fromJSON("params.json")
-default_params$MAX_SIZE <- 1e6
-default_params$NUM_GENS <- 21000 
-values <- list(
-    POP_SIZE = c(40, 320), 
-    DISPERSAL_SIGMA = c(0.2, 2),
-    P_D = 2^-c(1, 6),
-    YEAR_SHAPE = c(1, 2)
+default_params <- list(
+    DEBUG = FALSE,
+    NUM_GENS = 500,
+    STEPSIZE = 1,
+    POP_SIZE = 100,
+    P_D = 0.2,
+    YEAR_SHAPE = 1.5
 )
 
-# nreps <- 300
-# base_param_values <- do.call(expand.grid, values)
-# param_values <- data.frame(lapply(base_param_values, function (x) {
-#             c(x, min(x) + runif(nreps - length(x)) * (max(x) - min(x)))
-#     }))
+if (FALSE) {
+    # Do first round of sims to get posterior
+    default_params$NUM_GENS <- 500
+    default_params$START_TIME_AGO <- default_params$NUM_GENS
+    values <- list(
+        POP_SIZE = c(40, 320), 
+        DISPERSAL_SIGMA = c(0.2, 2),
+        P_D = 2^-c(1, 6),
+        YEAR_SHAPE = c(1, 2)
+    )
 
-# Parameter values that give number of simulated patches close to 250
-param_values <- data.frame(POP_SIZE = c(69.7, 310.8, 111.9),
-                           DISPERSAL_SIGMA = c(1.87, 0.28, 0.75),
-                           P_D = c(0.48, 0.26, 0.08),
-                           YEAR_SHAPE = c(1.95, 1.59, 1.26))
+    basedir <- "./post_500"
+    nreps <- 300
+    base_param_values <- do.call(expand.grid, values)
+    param_values <- data.frame(lapply(base_param_values, function (x) {
+                c(x, min(x) + runif(nreps - length(x)) * (max(x) - min(x)))
+        }))
+}
+
+if (FALSE) {
+    # A few parameter values that give number of simulated patches close to 250
+    default_params$NUM_GENS <- 21000
+    default_params$START_TIME_AGO <- default_params$NUM_GENS
+    basedir <- "./three_sims"
+    param_values <- data.frame(POP_SIZE = c(69.7, 310.8, 111.9),
+                               DISPERSAL_SIGMA = c(1.87, 0.28, 0.75),
+                               P_D = c(0.48, 0.26, 0.08),
+                               YEAR_SHAPE = c(1.95, 1.59, 1.26)
+    )
+}
 
 param_values$id <- sprintf("run%06d", 1:nrow(param_values))
 
-basedir <- "./sim_runs"
 dir.create(basedir, showWarnings=FALSE)
 write.csv(param_values, file=file.path(basedir, "param_values.csv"), row.names=FALSE)
-writeLines(toJSON(default_params, pretty=TRUE), file.path(basedir, "default_params.json"))
 
 setup_files <- c("geo_layers")
 

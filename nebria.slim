@@ -3,8 +3,10 @@ initialize() {
 	initializeSLiMOptions(dimensionality="xy");
 	initializeSex("A");
 	initializeTreeSeq();
-	// these are default params that can be modified with -d at runtime
+	// These are default params that can be modified with -d at runtime
 	// or read in from "params.slim" (NOTE: params.slim will override these!)
+	// The file params.slim will be read from the working directory, or
+	// from OUTDIR if this is defined on the command line.
 	defaults = Dictionary(
 		"P_D", 0.01, // dispersal probability
 		"MEAN_HOPS", 20, // mean number of dispersal hops
@@ -20,10 +22,10 @@ initialize() {
 		"SUITABILITY_MAP", "geo_layers/Geo_only_slope_aspect_drainage.png", // suitability raster
 		// the habitat is entirely RASTER[k] at RASTER_SWITCH_TIMES_AGO[k]
 		"RASTERS",
-		   c("geo_layers/21000_LGM_CCSM.tif",
-			  "geo_layers/14700_17000_HS.tif",
-			  "geo_layers/12900_14700_BA.tif",
-			  "geo_layers/11700_12900_YDS.tif",
+		   c("geo_layers/21000_LGM_CCSM.png",
+			  "geo_layers/14700_17000_HS.png",
+			  "geo_layers/12900_14700_BA.png",
+			  "geo_layers/11700_12900_YDS.png",
 			  "geo_layers/08326-11700_EH.png",
 			  "geo_layers/04200_08326_MH.png",
 			  "geo_layers/00300-04200_LH.png", // LH looks much like today (but lower-res)
@@ -43,9 +45,9 @@ initialize() {
 		"DEBUG", T,
 		"STEPSIZE", 100,  // years per generation (to make debugging go faster)
 		"MAX_SIZE", 2e5,
-		"NUM_GENS", 3,  // number of generations to run for
-		"START_TIME_AGO", 2500, // number of years ago to start the simulation at
-		"OUTDIR", ".",
+		"NUM_GENS", 30,  // number of generations to run for
+		"START_TIME_AGO", 21005, // number of years ago to start the simulation at
+		"OUTDIR", exists("OUTDIR") ? OUTDIR else ".",
 		"RELOAD_FILE", "",
 		"OCCUPIED_THRESHOLD", 10
 		);
@@ -74,6 +76,9 @@ initialize() {
 	defineConstant("MAP_RES", max(MAP_RES_X, MAP_RES_Y));
 	defineConstant("SIGMA", DISPERSAL_SIGMA / sqrt(MEAN_HOPS));
 	defineConstant("YEAR_MEAN", exp(1/(2*YEAR_SHAPE)) / YEAR_SHAPE); // defined so that mean(log(year effect)) is near zero
+	
+	if (NUM_GENS * STEPSIZE > START_TIME_AGO) 
+		catn("WARNING! Simulating into the future - did you mean to set START_TIME_AGO?");	
 	
 	initializeMutationRate(0.0);
 	initializeMutationType("m1", 0.5, "f", 0.0);
@@ -114,10 +119,7 @@ initialize() {
 	log.addPopulationSize();
 	log.addCustomColumn("years_ago", "YEAR_AGO;");
 	log.addCustomColumn("num_juveniles", "NUM_JUVENILES;");
-	log.addCustomColumn("num_patches",
-		"NUM_OCCUPIED;");
-// BUG: https://github.com/MesserLab/SLiM/issues/243
-//		"sum(summarizeIndividuals(p1.individuals, c(LAST_HABITAT.width, LAST_HABITAT.height), p1.spatialBounds, operation='1;', gather='sum') > OCCUPIED_THRESHOLD);");
+	log.addCustomColumn("num_patches", "NUM_OCCUPIED;");
 	if (DEBUG) {
 		log.addMeanSDColumns("num_hops", "p1.individuals.getValue('num_hops');");
 		log.addCustomColumn("prop_dispersers", "p1.individualCount > 0 ? 0 else mean(p1.individuals.getValue('distance') > sqrt(2) * MAP_RES);");
@@ -127,11 +129,17 @@ initialize() {
 	}
 }
 
+// Remember everyone and output tree sequence
+s97 2000 late() {
+	sim.treeSeqRememberIndividuals(p1.individuals);
+	sim.treeSeqOutput(OUTPATH, metadata=params);
+}
+
 // Output map of population
 s98 2000 late() {
-	patches = summarizeIndividuals(p1.individuals, c(LAST_HABITAT.width, LAST_HABITAT.height), p1.spatialBounds, operation="length(individuals);");
-	patch_map = Image(asFloat(patches > 0));
-	patch_map.write(IMAGEPATH + sim.generation + ".png");
+	patches = summarizeIndividuals(p1.individuals, c(5 * LAST_HABITAT.width, 5 * LAST_HABITAT.height), p1.spatialBounds, operation="length(individuals);");
+	patch_map = Image(asFloat(patches > OCCUPIED_THRESHOLD));
+	patch_map.write(IMAGEPATH + format("%05d", YEAR_AGO) + ".png");
 }
 
 // End of simulation
@@ -149,12 +157,21 @@ s99 2000 late() {
 		+ "(" + this_num + ") and interpolating to " + RASTERS[NEXT_RASTER_NUM]
 		+ "(" + NEXT_RASTER_NUM + ").");
 	output_negative = NUM_GENS - RASTER_SWITCH_TIMES_AGO/STEPSIZE;
-	
-	sim.rescheduleScriptBlock(s99, generations=NUM_GENS);
 	output_generations = asInteger(output_negative[output_negative > 0]);
-	catn("Writing out at" + output_generations);
-	// write out snapshots of the population
-	sim.rescheduleScriptBlock(s98, generations=output_generations);
+	png_generations = sort(unique(
+		c(1, 500 * seqLen(asInteger(NUM_GENS/500)), NUM_GENS, output_generations)
+	));
+	png_generations = png_generations[png_generations > 1];
+
+	// write out snapshots of the population:
+	// images
+	catn("Saving pngs at " + paste(png_generations, sep=", "));
+	sim.rescheduleScriptBlock(s98, generations=png_generations);
+	// and, tree sequences:
+	catn("Saving the tree seuqence at " + paste(output_generations, sep=", "));
+	sim.rescheduleScriptBlock(s97, generations=output_generations);
+
+	sim.rescheduleScriptBlock(s99, generations=NUM_GENS);
 }
 
 1 late() {
