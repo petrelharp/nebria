@@ -3,8 +3,10 @@ initialize() {
 	initializeSLiMOptions(dimensionality="xy");
 	initializeSex("A");
 	initializeTreeSeq();
-	// these are default params that can be modified with -d at runtime
+	// These are default params that can be modified with -d at runtime
 	// or read in from "params.slim" (NOTE: params.slim will override these!)
+	// The file params.slim will be read from the working directory, or
+	// from OUTDIR if this is defined on the command line.
 	defaults = Dictionary(
 		"P_D", 0.01, // dispersal probability
 		"MEAN_HOPS", 20, // mean number of dispersal hops
@@ -45,7 +47,7 @@ initialize() {
 		"MAX_SIZE", 2e5,
 		"NUM_GENS", 30,  // number of generations to run for
 		"START_TIME_AGO", 21005, // number of years ago to start the simulation at
-		"OUTDIR", ".",
+		"OUTDIR", exists("OUTDIR") ? OUTDIR else ".",
 		"RELOAD_FILE", "",
 		"OCCUPIED_THRESHOLD", 10
 		);
