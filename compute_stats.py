@@ -7,6 +7,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.collections as mc
 
+import recap
+
 rng = np.random.default_rng()
 
 if len(sys.argv) != 2:
@@ -30,25 +32,39 @@ min_patch_size = 10  # individuals
 patch_radius = 0.05  # km
 
 # mutation rate
-mut_rate = 1e-8
+mut_rate = 2.8e-9
 
 print(
         f"Reading in from {ts_file}, outputting to {basename}*\n"
         f"  Merging patches of minimum size {min_patch_size} closer than {patch_radius} km of each other.\n"
-        f"  Maximum distane to match patches to observed locations: {max_dist} km."
+        f"  Maximum distance to match patches to observed locations: {max_dist} km."
 )
 
 # SLiM doesn't write out time units yet
 warnings.simplefilter('ignore', msprime.TimeUnitsMismatchWarning)
 
 # recapitate and mutate
-ts = pyslim.load(ts_file)
-ts = pyslim.recapitate(ts, ancestral_Ne=1e4, recombination_rate=1e-8)
+ts = tskit.load(ts_file)
+
+# Reduce to samples today, then reassign these to north/middle/south
+# "populations" for recapitation.
+ts = ts.simplify(ts.samples(population=1, time=0), keep_input_roots=True)
+
+demog = recap.get_demography()
+ts = recap.setup(ts, demog)
+
+ts = msprime.sim_ancestry(
+        initial_state=ts,
+        demography=demog,
+        recombination_rate=2.48e-8,
+)
+
 ts = msprime.sim_mutations(
         ts,
         rate=mut_rate,
         model=msprime.SLiMMutationModel(type=0)
 )
+
 ts = pyslim.SlimTreeSequence(ts)
 
 real_locs = pd.read_csv("sample_locs.csv") .rename(
@@ -57,23 +73,8 @@ real_locs = pd.read_csv("sample_locs.csv") .rename(
 real_locs.set_index('site_name', inplace=True)
 real_locs.index.names = ['site_name']
 
-# subpopulation 2, if present, is our fake population for visualization
-sample_indivs = []
-for i in ts.individuals_alive_at(0):
-    ind = ts.individual(i)
-    ns = [ts.node(n).is_sample() for n in ind.nodes]
-    if ((ind.metadata['subpopulation'] == 1)
-            and (sum(ns) == len(ns))):
-        sample_indivs.append(i)
-
-sample_indivs = np.array(sample_indivs)
+sample_indivs = ts.individuals_alive_at(0)
 sample_locs = np.array([ts.individual(i).location[:2] for i in sample_indivs])
-
-def dist(x, y):
-    return np.sqrt(
-            (x[..., 0].astype("float") - y[..., 0].astype("float")) ** 2
-            + (x[..., 1].astype("float") - y[..., 1].astype("float")) ** 2
-    )
 
 ##########
 # Find the distinct patches of simulated individuals:
@@ -104,7 +105,7 @@ _merge_with = {}
 for j, xyn in enumerate(_sorted_patches):
     xy = xyn[:2]
     if tuple(xy) not in _merge_with:
-        pdist = dist(xy, _sorted_patches[(j+1):,:2])
+        pdist = recap.dist(xy, _sorted_patches[(j+1):,:2])
         for k, d in zip(range(j+1, len(_sorted_patches)), pdist):
             xy1 = (_sorted_patches[k, 0], _sorted_patches[k, 1])
             if ((d <= patch_radius) and
@@ -124,7 +125,7 @@ patch_sizes = np.array([len(patches[tuple(a)]) for a in patch_xy])
 real_locs["num_nearby"] = None
 real_locs["close_patch"] = -1  # BEWARE!!! but pandas has no reasonable missing data type
 for k in range(real_locs.shape[0]):
-    pdist = dist(
+    pdist = recap.dist(
             patch_xy,
             np.array(real_locs.loc[real_locs.index[k], ["slim_x", "slim_y"]])
     )

@@ -2,3 +2,4 @@
 lit
 slurm-*.log
 slurm-*.out
+__pycache__
