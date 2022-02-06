@@ -1,11 +1,13 @@
 import numpy as np
 import tskit, msprime, pyslim
 
+
 def dist(x, y):
     return np.sqrt(
             (x[..., 0].astype("float") - y[..., 0].astype("float")) ** 2
             + (x[..., 1].astype("float") - y[..., 1].astype("float")) ** 2
     )
+
 
 def get_demography(
         conness=1000,
@@ -93,3 +95,51 @@ def setup(ts, demography):
     return ts
 
 
+def assign_patches(ts, patch_radius):
+    """
+    Merge individuals into "patches" using a simple greedy algorithm.
+    The output is a dictionary that is indexed by (x, y) tuples of spatial
+    location, and values are lists of the individual IDs assigned to that patch.
+
+    Strategy:
+    1. Round locations to a resolution smaller than `patch_radius`.
+    2. Sort unique locations by number of individuals.
+    3. Merge any location with the largest other location within `patch_radius`
+       that is not itself merged to a larger location.
+    """
+    sample_indivs = ts.individuals_alive_at(0)
+    sample_locs = np.array([ts.individual(i).location[:2] for i in sample_indivs])
+
+    # first round to this many binary digits
+    digits2 = 2 + int( (-1) * np.floor(np.log2(patch_radius)) )
+    def coarsen(x):
+        return np.round( (2 ** digits2) * x ) / (2 ** digits2)
+
+    patches = {}
+    for i, (x, y) in enumerate(sample_locs):
+        xy = (coarsen(x), coarsen(y))
+        if xy not in patches:
+            patches[xy] = []
+        patches[xy].append(i)
+
+    # now merge very close ones:
+    _sorted_patches = list(patches.keys())
+    # these will be in decreasing order of size
+    _sorted_patches.sort(key = lambda x: len(patches[x]), reverse=True)
+    _sorted_patches = np.array(_sorted_patches)
+    _merge_with = {}
+    for j, xyn in enumerate(_sorted_patches):
+        xy = xyn[:2]
+        if tuple(xy) not in _merge_with:
+            pdist = dist(xy, _sorted_patches[(j+1):,:2])
+            for k, d in zip(range(j+1, len(_sorted_patches)), pdist):
+                xy1 = (_sorted_patches[k, 0], _sorted_patches[k, 1])
+                if ((d <= patch_radius) and
+                        (xy1 not in _merge_with)):
+                    _merge_with[xy1] = tuple(xy)
+
+    for xy1, xy0 in _merge_with.items():
+        patches[xy0].extend(patches[xy1])
+        del patches[xy1]
+
+    return patches

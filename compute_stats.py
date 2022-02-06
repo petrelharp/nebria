@@ -1,5 +1,6 @@
 import sys, os
 import warnings
+import time
 import pyslim, tskit, msprime
 import numpy as np
 import pandas as pd
@@ -8,6 +9,8 @@ import matplotlib.pyplot as plt
 import matplotlib.collections as mc
 
 import recap
+
+start_time = time.time()
 
 rng = np.random.default_rng()
 
@@ -24,12 +27,12 @@ if not os.path.isfile(ts_file):
 
 basename = ts_file.replace(".trees", "")
 
-# maximum distance to match samples out to
+# maximum distance to match observed patches with sample locations
 max_dist = 10  # km
 # minimum size of a simulated group to be called a 'patch'
 min_patch_size = 10  # individuals
 # radius within which to merge groups of individuals
-patch_radius = 0.05  # km
+patch_radius = 0.4  # km
 
 # mutation rate
 mut_rate = 2.8e-9
@@ -53,17 +56,29 @@ ts = ts.simplify(ts.samples(population=1, time=0), keep_input_roots=True)
 demog = recap.get_demography()
 ts = recap.setup(ts, demog)
 
+#######
+setup_time = time.time()
+print(f"time: Setup done in {setup_time - start_time}. Beginning recapitation.")
+
 ts = msprime.sim_ancestry(
         initial_state=ts,
         demography=demog,
         recombination_rate=2.48e-8,
 )
 
+#######
+recap_time = time.time()
+print(f"time: Recap done in {recap_time - setup_time}. Adding mutations.")
+
 ts = msprime.sim_mutations(
         ts,
         rate=mut_rate,
         model=msprime.SLiMMutationModel(type=0)
 )
+
+#######
+mut_time = time.time()
+print(f"time: Mutations added in {mut_time - recap_time}. Setting up for statistics.")
 
 ts = pyslim.SlimTreeSequence(ts)
 
@@ -73,55 +88,20 @@ real_locs = pd.read_csv("sample_locs.csv") .rename(
 real_locs.set_index('site_name', inplace=True)
 real_locs.index.names = ['site_name']
 
-sample_indivs = ts.individuals_alive_at(0)
-sample_locs = np.array([ts.individual(i).location[:2] for i in sample_indivs])
+# Merge locations within patch_radius of each other
+patches = recap.assign_patches(ts, patch_radius)
+print(f"Merged {ts.num_individuals} into {len(patches)} patches,")
 
-##########
-# Find the distinct patches of simulated individuals:
-# `patches[xy]` will contain a list of the individual IDs
-#    at the patch with coordinates xy
-#
-# Strategy:
-# 1. Round locations to the nearest 10m
-# 2. Sort unique locations by number of individuals
-# 3. Merge any location with the largest other location within max_distance
-#    that is not itself merged to a larger location.
-# 4. Retain merged locations with at least min_patch_size individuals.
-
-
-patches = {}
-for i, (x, y) in enumerate(sample_locs):
-    xy = (round(x, 1), round(y, 1))
-    if xy not in patches:
-        patches[xy] = []
-    patches[xy].append(i)
-
-# now merge very close ones:
-_sorted_patches = list(patches.keys())
-# these will be in decreasing order of size
-_sorted_patches.sort(key = lambda x: len(patches[x]), reverse=True)
-_sorted_patches = np.array(_sorted_patches)
-_merge_with = {}
-for j, xyn in enumerate(_sorted_patches):
-    xy = xyn[:2]
-    if tuple(xy) not in _merge_with:
-        pdist = recap.dist(xy, _sorted_patches[(j+1):,:2])
-        for k, d in zip(range(j+1, len(_sorted_patches)), pdist):
-            xy1 = (_sorted_patches[k, 0], _sorted_patches[k, 1])
-            if ((d <= patch_radius) and
-                    (xy1 not in _merge_with)):
-                _merge_with[xy1] = tuple(xy)
-
-for xy1, xy0 in _merge_with.items():
-    patches[xy0].extend(patches[xy1])
-    del patches[xy1]
-
-# now only keep patches of size at least min_patch_size
+# Now only keep patches of size at least min_patch_size
 patches = {a:b for a, b in patches.items() if len(b) >= min_patch_size}
 patch_xy = np.array([xy for xy in patches])
 patch_sizes = np.array([len(patches[tuple(a)]) for a in patch_xy])
 
-# for each real location find the samples within max_dist of it
+print(f"  ... but keeping only the {len(patches)} patches of size "
+      f"at least {min_patch_size}, having a total of {sum(patch_sizes)} "
+      f"individuals between them.")
+
+# For each real location find the samples within max_dist of it
 real_locs["num_nearby"] = None
 real_locs["close_patch"] = -1  # BEWARE!!! but pandas has no reasonable missing data type
 for k in range(real_locs.shape[0]):
@@ -135,14 +115,30 @@ for k in range(real_locs.shape[0]):
 
 
 ####
-# plot locations of individuals
+# plot locations of individuals and patches
 # and where is their nearest, largest sampling location(s)
 
+# all individuals
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 6))
+sample_indivs = ts.individuals_alive_at(0)
+sample_locs = np.array([ts.individual(i).location[:2] for i in sample_indivs])
+ax1.scatter(sample_locs[:,0], sample_locs[:,1], marker=".", label="individuals", c='black', s=0.1)
+for ax in (ax1, ax2):
+    ax.scatter(patch_xy[:,0], patch_xy[:,1], s=patch_sizes, marker="o", label="simulated samples")
+    ax.scatter(real_locs["slim_x"], real_locs["slim_y"], label="real samples")
+    ax.set_aspect('equal')
+    ax.set_xlabel("eastings")
+    ax.set_ylabel("northings")
+
+ax1.legend()
+plt.tight_layout()
+plt.savefig(f"{basename}.locs.png")
+
+# patches and their matches
 fig, ax = plt.subplots(1, 1, figsize=(5, 6))
 ax.set_aspect('equal')
 ax.set_xlabel("eastings")
 ax.set_ylabel("northings")
-
 lc = mc.LineCollection(
         [[(real_locs["slim_x"][k], real_locs["slim_y"][k]),
             patch_xy[real_locs["close_patch"][k]]]
@@ -155,11 +151,13 @@ lc = mc.LineCollection(
 ax.add_collection(lc)
 ax.scatter(patch_xy[:,0], patch_xy[:,1], s=patch_sizes, marker="o", label="simulated samples")
 ax.scatter(real_locs["slim_x"], real_locs["slim_y"], label="real samples")
-
 ax.legend()
-
 plt.tight_layout()
 plt.savefig(f"{basename}.locs.pdf")
+
+#######
+stat_setup_time = time.time()
+print(f"time: Statistics setup in {stat_setup_time - mut_time}. Computing statistics.")
 
 
 ####
@@ -256,3 +254,8 @@ pairs.loc[has_samples, "Fst"] = ts.Fst(
 
 # write out text file
 pairs.to_csv(f"{basename}.pairstats.csv")
+
+#######
+end_time = time.time()
+print(f"time: Statistics computed in {end_time - stat_setup_time}.")
+print(f"time: Total time: {end_time - start_time}.")
