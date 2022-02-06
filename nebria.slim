@@ -168,7 +168,7 @@ s99 2000 late() {
 	catn("Saving pngs at " + paste(png_generations, sep=", "));
 	sim.rescheduleScriptBlock(s98, generations=png_generations);
 	// and, tree sequences:
-	catn("Saving the tree seuqence at " + paste(output_generations, sep=", "));
+	catn("Saving the tree seuqence at " + paste(png_generations, sep=", "));
 	sim.rescheduleScriptBlock(s97, generations=output_generations);
 
 	sim.rescheduleScriptBlock(s99, generations=NUM_GENS);
@@ -336,12 +336,12 @@ late() {
 }
 
 1: late() {
+	patches = summarizeIndividuals(p1.individuals, c(LAST_HABITAT.width, LAST_HABITAT.height), p1.spatialBounds, operation="length(individuals);");
+	defineGlobal("NUM_OCCUPIED", sum(patches > OCCUPIED_THRESHOLD));
 	// show map of occupied patches in SLiMgui
 	if (DEBUG) {
-		patches = summarizeIndividuals(p1.individuals, c(LAST_HABITAT.width, LAST_HABITAT.height), p1.spatialBounds, operation="length(individuals);");
 		sim.subpopulations.defineSpatialMap('occupied', 'xy', patches,
 			valueRange=c(0.0, 1.0), colors=c("#000000", "#FFFFFF"));
-		defineGlobal("NUM_OCCUPIED", sum(patches > OCCUPIED_THRESHOLD));
 	}
 }
 
