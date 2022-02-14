@@ -101,22 +101,29 @@ print(f"  ... but keeping only the {len(patches)} patches of size "
       f"at least {min_patch_size}, having a total of {sum(patch_sizes)} "
       f"individuals between them.")
 
-# For each real location find the samples within max_dist of it
+# For each real location find the samples within max_dist of it,
+# and the nearest patch with at least the required number of samples
 real_locs["num_nearby"] = None
-real_locs["close_patch"] = -1  # BEWARE!!! but pandas has no reasonable missing data type
+real_locs["closest_patch"] = -1  # BEWARE!!! but pandas has no reasonable missing data type
+close_patches = { }
 for k in range(real_locs.shape[0]):
+    name = real_locs.index[k]
     pdist = recap.dist(
             patch_xy,
             np.array(real_locs.loc[real_locs.index[k], ["slim_x", "slim_y"]])
     )
-    nearby = np.where(pdist <= max_dist)[0]
-    real_locs.loc[real_locs.index[k], "num_nearby"] = len(nearby)
-    real_locs.loc[real_locs.index[k], "close_patch"] = np.argmin(pdist)
+    nearby = (pdist <= max_dist)
+    real_locs.loc[real_locs.index[k], "num_nearby"] = np.sum(nearby)
+    close_patches[name] = np.where(nearby)[0]
+    # only match to patches with at least as many samples as we have in the real data
+    big_enough = np.where(patch_sizes >= real_locs["sample_size"][k])[0]
+    real_locs.loc[real_locs.index[k], "closest_patch"] = big_enough[np.argmin(pdist[big_enough])]
+    assert pdist[real_locs.loc[real_locs.index[k], "closest_patch"]] <= max_dist 
 
 
 ####
 # plot locations of individuals and patches
-# and where is their nearest, largest sampling location(s)
+# and where is their nearest, large enough sampling location(s)
 
 # all individuals
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 6))
@@ -139,18 +146,24 @@ fig, ax = plt.subplots(1, 1, figsize=(5, 6))
 ax.set_aspect('equal')
 ax.set_xlabel("eastings")
 ax.set_ylabel("northings")
+ax.scatter(patch_xy[:,0], patch_xy[:,1], s=patch_sizes, marker="o", label="simulated samples")
+ax.scatter(real_locs["slim_x"], real_locs["slim_y"], label="real samples", zorder=5)
+lines = []
+for k in range(real_locs.shape[0]):
+    name = real_locs.index[k]
+    xy0 = (real_locs["slim_x"][k], real_locs["slim_y"][k])
+    for j in close_patches[name]:
+        xy1 = patch_xy[j]
+        lines.append([xy0, xy1])
+
 lc = mc.LineCollection(
-        [[(real_locs["slim_x"][k], real_locs["slim_y"][k]),
-            patch_xy[real_locs["close_patch"][k]]]
-            for k in np.where(real_locs["close_patch"] >= 0)[0]],
+        lines,
         label='matches', 
         colors=["black" if n > 0 else "red" for n in real_locs["num_nearby"]],
         linewidths=1,
-        zorder=0
+        zorder=3
     )
 ax.add_collection(lc)
-ax.scatter(patch_xy[:,0], patch_xy[:,1], s=patch_sizes, marker="o", label="simulated samples")
-ax.scatter(real_locs["slim_x"], real_locs["slim_y"], label="real samples")
 ax.legend()
 plt.tight_layout()
 plt.savefig(f"{basename}.locs.pdf")
@@ -170,7 +183,7 @@ _sampled = set()
 real_locs["num_sim_samples"] = 0
 for k, r in enumerate(real_locs.itertuples()):
     row = r._asdict()
-    xy = tuple(patch_xy[row["close_patch"]])
+    xy = tuple(patch_xy[row["closest_patch"]])
     nodes = list(set(patches[xy]) - set(_sampled))
     n = row["sample_size"]
     if len(nodes) < n:

@@ -18,6 +18,8 @@ def get_demography(
 ):
     '''
     This is from git@github.com:yimingweng/N_ingens_ABC/scripts/model1.py
+
+    TODO: replace with model2
     '''
     demography = msprime.Demography()
     demography.add_population(name="SLiM", initial_size=1)
