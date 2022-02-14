@@ -44,7 +44,7 @@ initialize() {
 		"YEAR_SHAPE", 1.5, // shape parameter in gamma distribution of year effects
 		"DEBUG", T,
 		"STEPSIZE", 100,  // years per generation (to make debugging go faster)
-		"MAX_SIZE", 2e5,
+		"MAX_SIZE", 1e6,
 		"NUM_GENS", 30,  // number of generations to run for
 		"START_TIME_AGO", 21005, // number of years ago to start the simulation at
 		"OUTDIR", exists("OUTDIR") ? OUTDIR else ".",
@@ -168,7 +168,7 @@ s99 2000 late() {
 	catn("Saving pngs at " + paste(png_generations, sep=", "));
 	sim.rescheduleScriptBlock(s98, generations=png_generations);
 	// and, tree sequences:
-	catn("Saving the tree seuqence at " + paste(png_generations, sep=", "));
+	catn("Saving the tree seuqence at " + paste(output_generations, sep=", "));
 	sim.rescheduleScriptBlock(s97, generations=output_generations);
 
 	sim.rescheduleScriptBlock(s99, generations=NUM_GENS);
