@@ -32,7 +32,7 @@ max_dist = 10  # km
 # minimum size of a simulated group to be called a 'patch'
 min_patch_size = 10  # individuals
 # radius within which to merge groups of individuals
-patch_radius = 0.4  # km
+patch_radius = 0.5  # km
 
 # mutation rate
 mut_rate = 2.8e-9
@@ -46,12 +46,17 @@ print(
 # SLiM doesn't write out time units yet
 warnings.simplefilter('ignore', msprime.TimeUnitsMismatchWarning)
 
-# recapitate and mutate
-ts = tskit.load(ts_file)
+# Load tree sequence, reduce to samples today 
+ts = pyslim.load(ts_file)
+_alive_nodes = np.array(
+        [n for i in ts.individuals_alive_at(0)
+            for n in ts.individual(i).nodes
+            if ts.node(n).population == 1
+])
+ts = ts.simplify(alive_nodes, keep_input_roots=True)
 
-# Reduce to samples today, then reassign these to north/middle/south
+# then reassign these to north/middle/south
 # "populations" for recapitation.
-ts = ts.simplify(ts.samples(population=1, time=0), keep_input_roots=True)
 
 demog = recap.get_demography()
 ts = recap.setup(ts, demog)
