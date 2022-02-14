@@ -1,7 +1,9 @@
 library(abc)
 library(tidyverse)
 
-runs <- read.csv("sim_runs_new_maps/results.csv")
+basedir = "post_500/"
+
+runs <- read.csv(paste0(basedir, "results.csv"))
 
 # Want a posterior distribution for, all with uniform priors over the range
 # P_D (1/2 to 1/64)
@@ -36,7 +38,7 @@ adj_res <- data.frame(abc_res$adj.values)
 
 # Save results for adjusted posterior
 
-write.csv(adj_res, file = "sim_runs_new_maps/posterior_samples.csv")
+write.csv(adj_res, file = paste0(basedir, "posterior_samples.csv"))
 
 ggplot(adj_res, aes(x = DISPERSAL_SIGMA)) +
   geom_histogram()
@@ -47,22 +49,3 @@ ggplot(adj_res, aes(x = POP_SIZE)) +
 ggplot(adj_res, aes(x = YEAR_SHAPE)) +
   geom_histogram()
 
-varnames <- c("POP_SIZE", "DISPERSAL_SIGMA", "P_D", "YEAR_SHAPE")
-pairs(runs[,varnames],
-      pch=ifelse(runs$num_gens == 40, 20, 1), col=ifelse(runs$num_patches < 500 & runs$num_patches > 100, 'red', 'black'),
-      )
-plot(runs$POP_SIZE, runs$DISPERSAL_SIGMA, col=ifelse(runs$num_patches < 500 & runs$num_patches > 100, 'red', 'black'))
-#identify(runs$POP_SIZE, runs$DISPERSAL_SIGMA)
-
-ggplot(runs, aes(x = POP_SIZE, y = DISPERSAL_SIGMA, color = abs(num_patches - 250))) +
-  geom_point()
-
-close_patches <- filter(runs, num_patches < 450 & num_patches > 150)
-ggplot(close_patches, aes(x = num_individuals)) +
-  geom_histogram()
-ggplot(close_patches, aes(x = num_juveniles)) +
-  geom_histogram()
-
-# Parameters that give observed patches around 250
-
-params_to_check <- filter(runs, num_patches <= 260 & num_patches >= 240) %>% select(POP_SIZE, DISPERSAL_SIGMA, P_D, YEAR_SHAPE, id, num_patches)

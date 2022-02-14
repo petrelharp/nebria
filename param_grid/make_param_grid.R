@@ -14,14 +14,14 @@ if (FALSE) {
     default_params$NUM_GENS <- 500
     default_params$START_TIME_AGO <- default_params$NUM_GENS
     values <- list(
-        POP_SIZE = c(40, 320), 
+        POP_SIZE = c(40, 200), 
         DISPERSAL_SIGMA = c(0.2, 2),
         P_D = 2^-c(1, 6),
         YEAR_SHAPE = c(1, 2)
     )
 
     basedir <- "./post_500"
-    nreps <- 300
+    nreps <- 500
     base_param_values <- do.call(expand.grid, values)
     param_values <- data.frame(lapply(base_param_values, function (x) {
                 c(x, min(x) + runif(nreps - length(x)) * (max(x) - min(x)))
@@ -38,6 +38,18 @@ if (FALSE) {
                                P_D = c(0.48, 0.26, 0.08),
                                YEAR_SHAPE = c(1.95, 1.59, 1.26)
     )
+}
+
+if (TRUE) {
+  # A few parameter values that give number of simulated patches close to 250
+  default_params$NUM_GENS <- 21000
+  default_params$START_TIME_AGO <- default_params$NUM_GENS
+  basedir <- "./two_sims"
+  param_values <- data.frame(POP_SIZE = c(57.10027, 87.82954),
+                             DISPERSAL_SIGMA = c(0.5333791, 1.2358037),
+                             P_D = c(0.44232404, 0.04112197),
+                             YEAR_SHAPE = c(1.451843, 1.044548)
+  )
 }
 
 param_values$id <- sprintf("run%06d", 1:nrow(param_values))
