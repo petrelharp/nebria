@@ -10,10 +10,6 @@ import matplotlib.collections as mc
 
 import recap
 
-start_time = time.time()
-
-rng = np.random.default_rng()
-
 if len(sys.argv) != 2:
     print(f"""
     Usage:
@@ -27,15 +23,25 @@ if not os.path.isfile(ts_file):
 
 basename = ts_file.replace(".trees", "")
 
+start_time = time.time()
+rng = np.random.default_rng()
+
 # maximum distance to match observed patches with sample locations
 max_dist = 10  # km
 # minimum size of a simulated group to be called a 'patch'
 min_patch_size = 10  # individuals
 # radius within which to merge groups of individuals
-patch_radius = 0.4  # km
-
+patch_radius = 0.5  # km
 # mutation rate
 mut_rate = 2.8e-9
+
+### number of replicates
+replicates = {
+        "recapitation": 2,
+        "mutation": 2,
+        "match_patch": 2,
+}
+
 
 print(
         f"Reading in from {ts_file}, outputting to {basename}*\n"
@@ -46,41 +52,31 @@ print(
 # SLiM doesn't write out time units yet
 warnings.simplefilter('ignore', msprime.TimeUnitsMismatchWarning)
 
-# recapitate and mutate
-ts = tskit.load(ts_file)
+# Load tree sequence, reduce to samples today 
+# and remove extra population (if present)
+orig_ts = pyslim.load(ts_file)
+_alive_nodes = np.array(
+        [n for i in orig_ts.individuals_alive_at(0)
+            for n in orig_ts.individual(i).nodes
+            if orig_ts.node(n).population == 1
+])
+orig_ts = orig_ts.simplify(_alive_nodes, keep_input_roots=True)
 
-# Reduce to samples today, then reassign these to north/middle/south
+# then reassign these to north/middle/south
 # "populations" for recapitation.
-ts = ts.simplify(ts.samples(population=1, time=0), keep_input_roots=True)
 
-demog = recap.get_demography()
-ts = recap.setup(ts, demog)
+setup_demog = recap.get_demography()
+orig_ts = pyslim.SlimTreeSequence(recap.setup(orig_ts, setup_demog))
 
-#######
-setup_time = time.time()
-print(f"time: Setup done in {setup_time - start_time}. Beginning recapitation.")
+# keep locations to make sure these don't change through recapitation, etc
+ind_locs = np.array([ind.location for ind in orig_ts.individuals()])
 
-ts = msprime.sim_ancestry(
-        initial_state=ts,
-        demography=demog,
-        recombination_rate=2.48e-8,
+# Determine "patches" by merging locations within patch_radius of each other
+patches = recap.assign_patches(
+        orig_ts,
+        patch_radius
 )
-
-#######
-recap_time = time.time()
-print(f"time: Recap done in {recap_time - setup_time}. Adding mutations.")
-
-ts = msprime.sim_mutations(
-        ts,
-        rate=mut_rate,
-        model=msprime.SLiMMutationModel(type=0)
-)
-
-#######
-mut_time = time.time()
-print(f"time: Mutations added in {mut_time - recap_time}. Setting up for statistics.")
-
-ts = pyslim.SlimTreeSequence(ts)
+print(f"Merged {orig_ts.num_individuals} into {len(patches)} patches,")
 
 real_locs = pd.read_csv("sample_locs.csv") .rename(
         columns=lambda x: x.replace(".", "_"),
@@ -88,172 +84,226 @@ real_locs = pd.read_csv("sample_locs.csv") .rename(
 real_locs.set_index('site_name', inplace=True)
 real_locs.index.names = ['site_name']
 
-# Merge locations within patch_radius of each other
-patches = recap.assign_patches(ts, patch_radius)
-print(f"Merged {ts.num_individuals} into {len(patches)} patches,")
-
 # Now only keep patches of size at least min_patch_size
 patches = {a:b for a, b in patches.items() if len(b) >= min_patch_size}
 patch_xy = np.array([xy for xy in patches])
 patch_sizes = np.array([len(patches[tuple(a)]) for a in patch_xy])
 
-print(f"  ... but keeping only the {len(patches)} patches of size "
+print(f"... but keeping only the {len(patches)} patches of size "
       f"at least {min_patch_size}, having a total of {sum(patch_sizes)} "
       f"individuals between them.")
 
-# For each real location find the samples within max_dist of it
+# For each real location find the samples within max_dist of it,
+# and the nearest patch with at least the required number of samples
 real_locs["num_nearby"] = None
-real_locs["close_patch"] = -1  # BEWARE!!! but pandas has no reasonable missing data type
-for k in range(real_locs.shape[0]):
+close_patches = { }
+for name in real_locs.index:
     pdist = recap.dist(
             patch_xy,
-            np.array(real_locs.loc[real_locs.index[k], ["slim_x", "slim_y"]])
+            np.array(real_locs.loc[name, ["slim_x", "slim_y"]])
     )
-    nearby = np.where(pdist <= max_dist)[0]
-    real_locs.loc[real_locs.index[k], "num_nearby"] = len(nearby)
-    real_locs.loc[real_locs.index[k], "close_patch"] = np.argmin(pdist)
-
+    nearby = (pdist <= max_dist)
+    real_locs.loc[name, "num_nearby"] = np.sum(nearby)
+    close_patches[name] = np.where(nearby)[0]
 
 ####
 # plot locations of individuals and patches
-# and where is their nearest, largest sampling location(s)
+# and where is their nearest, large enough sampling location(s)
 
-# all individuals
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 6))
-sample_indivs = ts.individuals_alive_at(0)
-sample_locs = np.array([ts.individual(i).location[:2] for i in sample_indivs])
-ax1.scatter(sample_locs[:,0], sample_locs[:,1], marker=".", label="individuals", c='black', s=0.1)
-for ax in (ax1, ax2):
+if True:
+    # Plot all individuals
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 6))
+    sample_indivs = orig_ts.individuals_alive_at(0)
+    sample_locs = np.array([orig_ts.individual(i).location[:2] for i in sample_indivs])
+    ax1.scatter(sample_locs[:,0], sample_locs[:,1], marker=".", label="individuals", c='black', s=0.1)
+    for ax in (ax1, ax2):
+        ax.scatter(patch_xy[:,0], patch_xy[:,1], s=patch_sizes, marker="o", label="simulated samples")
+        ax.scatter(real_locs["slim_x"], real_locs["slim_y"], label="real samples")
+        ax.set_aspect('equal')
+        ax.set_xlabel("eastings")
+        ax.set_ylabel("northings")
+
+    ax1.legend()
+    plt.tight_layout()
+    plt.savefig(f"{basename}.locs.png")
+
+if True:
+    # Plot patches and their matches
+    fig, ax = plt.subplots(1, 1, figsize=(5, 6))
+    ax.set_aspect('equal')
+    ax.set_xlabel("eastings")
+    ax.set_ylabel("northings")
     ax.scatter(patch_xy[:,0], patch_xy[:,1], s=patch_sizes, marker="o", label="simulated samples")
-    ax.scatter(real_locs["slim_x"], real_locs["slim_y"], label="real samples")
+    ax.scatter(real_locs["slim_x"], real_locs["slim_y"], label="real samples", zorder=5)
+    lines = []
+    for k in range(real_locs.shape[0]):
+        name = real_locs.index[k]
+        xy0 = (real_locs["slim_x"][k], real_locs["slim_y"][k])
+        for j in close_patches[name]:
+            xy1 = patch_xy[j]
+            lines.append([xy0, xy1])
+
+    lc = mc.LineCollection(
+            lines,
+            label='matches', 
+            colors=["black" if n > 0 else "red" for n in real_locs["num_nearby"]],
+            linewidths=1,
+            zorder=3
+        )
+    ax.add_collection(lc)
+    ax.legend()
+    plt.tight_layout()
+    plt.savefig(f"{basename}.locs.pdf")
+
+if True:
+    # heterozygosity at all simulated locations
+    het = orig_ts.diversity([patches[tuple(xy)] for xy in patch_xy], mode='branch')
+
+    fig, ax = plt.subplots(1, 1, figsize=(5, 6))
     ax.set_aspect('equal')
     ax.set_xlabel("eastings")
     ax.set_ylabel("northings")
 
-ax1.legend()
-plt.tight_layout()
-plt.savefig(f"{basename}.locs.png")
+    ax.scatter(patch_xy[:,0], patch_xy[:,1], s=het/10, marker="o",
+            facecolors='none', edgecolors='blue',
+            label="expected heterozygosity")
+    ax.legend()
 
-# patches and their matches
-fig, ax = plt.subplots(1, 1, figsize=(5, 6))
-ax.set_aspect('equal')
-ax.set_xlabel("eastings")
-ax.set_ylabel("northings")
-lc = mc.LineCollection(
-        [[(real_locs["slim_x"][k], real_locs["slim_y"][k]),
-            patch_xy[real_locs["close_patch"][k]]]
-            for k in np.where(real_locs["close_patch"] >= 0)[0]],
-        label='matches', 
-        colors=["black" if n > 0 else "red" for n in real_locs["num_nearby"]],
-        linewidths=1,
-        zorder=0
-    )
-ax.add_collection(lc)
-ax.scatter(patch_xy[:,0], patch_xy[:,1], s=patch_sizes, marker="o", label="simulated samples")
-ax.scatter(real_locs["slim_x"], real_locs["slim_y"], label="real samples")
-ax.legend()
-plt.tight_layout()
-plt.savefig(f"{basename}.locs.pdf")
+    plt.tight_layout()
+    plt.savefig(f"{basename}.pi.pdf")
+
+
 
 #######
-stat_setup_time = time.time()
-print(f"time: Statistics setup in {stat_setup_time - mut_time}. Computing statistics.")
+setup_time = time.time()
+print(f"time: Setup done in {setup_time - start_time}. Beginning recapitation.")
+
+for recap_rep in range(replicates["recapitation"]):
+
+    recap_seed = rng.integers(1000000)
+    recap_row = rng.integers(recap.posterior_length)
+    demog = recap.get_demography(recap_row)
+    ts = msprime.sim_ancestry(
+            initial_state=orig_ts,
+            demography=demog,
+            recombination_rate=2.48e-8,
+            random_seed=recap_seed
+    )
+
+    # make sure there's no re-ordering
+    for ind, loc in zip(ts.individuals(), ind_locs):
+        assert np.all(loc == ind.location)
+
+    #######
+    recap_time = time.time()
+    print(f"time: Recap #{recap_rep} done in {recap_time - setup_time}. Adding mutations.")
+
+    for mut_rep in range(replicates["mutation"]):
+
+        mut_seed = rng.integers(1000000)
+        ts = msprime.sim_mutations(
+                ts,
+                rate=mut_rate,
+                model=msprime.SLiMMutationModel(type=0),
+                random_seed=mut_seed,
+        )
+
+        #######
+        mut_time = time.time()
+        print(f"time: Mutations #{mut_rep} added in {mut_time - recap_time}. Setting up for statistics.")
+
+        for match_rep in range(replicates["match_patch"]):
+
+            repname = f"{basename}_{recap_seed}_{mut_seed}_{match_rep}"
+
+            real_locs["match_patch"] = -1  # BEWARE!!! but pandas has no reasonable missing data type
+            for name in real_locs.index:
+                mp = rng.choice(close_patches[name])
+                ntries = 0
+                while mp in real_locs["match_patch"]:
+                    mp = rng.choice(close_patches[name])
+                    ntries += 1
+                    if ntries > 100:
+                        raise ValueError("No available nearby patches to match.")
+                real_locs.loc[name, "match_patch"] = mp
+
+            assert np.all(real_locs["match_patch"] >= 0)
+
+            #######
+            stat_setup_time = time.time()
+            print(f"time: Statistics setup in {stat_setup_time - mut_time}. Computing statistics.")
 
 
-####
-# compute statistics
+            ####
+            # compute statistics
+
+            # get matching sample sets
+            sample_sets = {}
+            real_locs["num_sim_samples"] = 0
+            for k, r in enumerate(real_locs.itertuples()):
+                row = r._asdict()
+                xy = tuple(patch_xy[row["match_patch"]])
+                nodes = patches[xy]
+                n = row["sample_size"]
+                real_locs.loc[real_locs.index[k], "num_sim_samples"] = len(nodes)
+                sample_sets[row['Index']] = nodes
 
 
-# get matching sample sets
-sample_sets = {}
-_sampled = set()
-real_locs["num_sim_samples"] = 0
-for k, r in enumerate(real_locs.itertuples()):
-    row = r._asdict()
-    xy = tuple(patch_xy[row["close_patch"]])
-    nodes = list(set(patches[xy]) - set(_sampled))
-    n = row["sample_size"]
-    if len(nodes) < n:
-        print(f"Not enough samples for {row['Index']} left: only {len(nodes)} < {n}.")
-    s = rng.choice(nodes, size=min(len(nodes), n), replace=False)
-    real_locs.loc[real_locs.index[k], "num_sim_samples"] = len(s)
-    sample_sets[row['Index']] = s
-    _sampled.update(s)
+            # expected heterozygosity
+            real_locs["het"] = np.nan
+            for k in range(real_locs.shape[0]):
+                name = real_locs.index[k]
+                samples = sample_sets[name]
+                if len(samples) > 0:
+                    pi = ts.diversity(samples, mode='site')
+                    real_locs.loc[real_locs.index[k], 'het'] = pi
 
 
-# expected heterozygosity
-real_locs["het"] = np.nan
-for k in range(real_locs.shape[0]):
-    name = real_locs.index[k]
-    samples = sample_sets[name]
-    if len(samples) > 0:
-        pi = ts.diversity(samples, mode='site')
-        real_locs.loc[real_locs.index[k], 'het'] = pi
+            # write out text file
+            real_locs.to_csv(f"{repname}.stats.csv")
 
+            ###
+            # pairwise stats
 
-# write out text file
-real_locs.to_csv(f"{basename}.stats.csv")
+            pairs = pd.DataFrame(
+                        np.array(
+                            [[a, b] for a in real_locs.index for b in real_locs.index if a <= b]
+                        ),
+                        columns=["loc1", "loc2"],
+            )
+            pairs["dxy"] = np.nan
+            pairs["Fst"] = np.nan
 
+            has_samples = np.logical_and(
+                    real_locs.loc[pairs["loc1"], "num_sim_samples"].values > 0,
+                    real_locs.loc[pairs["loc2"], "num_sim_samples"].values > 0
+            )
 
-# heterozygosity at all simulated locations
-het = ts.diversity([patches[tuple(xy)] for xy in patch_xy], mode='branch')
+            slist = []
+            nlist = []
+            for n in sample_sets:
+                s = sample_sets[n]
+                if len(s) > 0:
+                    nlist.append(n)
+                    slist.append(s)
 
-fig, ax = plt.subplots(1, 1, figsize=(5, 6))
-ax.set_aspect('equal')
-ax.set_xlabel("eastings")
-ax.set_ylabel("northings")
+            plist = []
+            for a, b in zip(pairs["loc1"][has_samples], pairs["loc2"][has_samples]):
+                plist.append((nlist.index(a), nlist.index(b)))
 
-ax.scatter(patch_xy[:,0], patch_xy[:,1], s=het/10, marker="o",
-        facecolors='none', edgecolors='blue',
-        label="expected heterozygosity")
-ax.legend()
+            pairs.loc[has_samples, "dxy"] = ts.divergence(
+                    sample_sets = slist,
+                    indexes = plist,
+                    mode = 'site',
+            )
+            pairs.loc[has_samples, "Fst"] = ts.Fst(
+                    sample_sets = slist,
+                    indexes = plist,
+                    mode = 'site',
+            )
 
-plt.tight_layout()
-plt.savefig(f"{basename}.pi.pdf")
-
-
-###
-# pairwise stats
-
-pairs = pd.DataFrame(
-            np.array(
-                [[a, b] for a in real_locs.index for b in real_locs.index if a <= b]
-            ),
-            columns=["loc1", "loc2"],
-)
-pairs["dxy"] = np.nan
-pairs["Fst"] = np.nan
-
-has_samples = np.logical_and(
-        real_locs.loc[pairs["loc1"], "num_sim_samples"].values > 0,
-        real_locs.loc[pairs["loc2"], "num_sim_samples"].values > 0
-)
-
-slist = []
-nlist = []
-for n in sample_sets:
-    s = sample_sets[n]
-    if len(s) > 0:
-        nlist.append(n)
-        slist.append(s)
-
-plist = []
-for a, b in zip(pairs["loc1"][has_samples], pairs["loc2"][has_samples]):
-    plist.append((nlist.index(a), nlist.index(b)))
-
-pairs.loc[has_samples, "dxy"] = ts.divergence(
-        sample_sets = slist,
-        indexes = plist,
-        mode = 'site',
-)
-pairs.loc[has_samples, "Fst"] = ts.Fst(
-        sample_sets = slist,
-        indexes = plist,
-        mode = 'site',
-)
-
-# write out text file
-pairs.to_csv(f"{basename}.pairstats.csv")
+            # write out text file
+            pairs.to_csv(f"{repname}.pairstats.csv")
 
 #######
 end_time = time.time()

@@ -4,7 +4,7 @@ tifs <- commandArgs(TRUE)
 
 for (fn in tifs) {
     x <- raster(fn)
-    png(file=gsub("tif", "png", fn),
+    png(file=gsub("[.]tif.*", ".png", fn),
         width=48*dim(x)[1]*6/max(dim(x)),
         height=48*dim(x)[2]*6/max(dim(x)),
         res=48,

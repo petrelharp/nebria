@@ -1,0 +1,3 @@
+north_lineage	-119.5833	37.88333
+center_lineage	-118.9167	37.28333
+south_lineage	-118.8833	36.11667

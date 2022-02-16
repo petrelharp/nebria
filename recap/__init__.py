@@ -1,5 +1,16 @@
 import numpy as np
 import tskit, msprime, pyslim
+import importlib.resources
+from . import data
+
+# this is the way to include a data file, I guess?
+# https://stackoverflow.com/questions/6028000/how-to-read-a-static-file-from-inside-a-python-package
+_post_file = importlib.resources.open_text(data, 'posterior.txt')
+_header = _post_file.readline().strip().split()
+_post = np.loadtxt(_post_file, skiprows=1)
+# keys are ['T2', 'T1', 'CS', 'AS', 'NE', 'Na', 'Nc', 'Ns']
+posterior = { _header[k]: _post[:,k] for k in range(len(_header)) }
+posterior_length = _post.shape[0]
 
 
 def dist(x, y):
@@ -9,26 +20,27 @@ def dist(x, y):
     )
 
 
-def get_demography(
-        conness=1000,
-        selden=1000,
-        army=1000,
-        na=1000,
-        split_time=596005.1,
-):
+def get_demography(rep=0):
     '''
-    This is from git@github.com:yimingweng/N_ingens_ABC/scripts/model1.py
+    This is from git@github.com:yimingweng/N_ingens_ABC/scripts/model2.py
     '''
+    params = {
+        k: posterior[k][rep] for k in posterior
+    }
+
     demography = msprime.Demography()
     demography.add_population(name="SLiM", initial_size=1)
-    demography.add_population(name="north", initial_size=conness) # Conness
-    demography.add_population(name="center", initial_size=selden) # Selden
-    demography.add_population(name="south", initial_size=army)    # Army
-    demography.add_population(name="COS", initial_size=na)
-    demography.add_population_split(time=split_time, derived=["north"], ancestral="COS")
-    demography.add_population_split(time=split_time, derived=["center"], ancestral="COS")
-    demography.add_population_split(time=split_time, derived=["south"], ancestral="COS")
-    
+    demography.add_population(name="north", initial_size=params["Nc"]) # Conness
+    demography.add_population(name="center", initial_size=params["Ns"]) # Selden
+    demography.add_population(name="south", initial_size=params["Na"])    # Army
+    demography.add_population(name="COS", initial_size=params["NE"])
+    demography.add_admixture(
+            time=params["T2"],
+            derived="center",
+            ancestral=["north", "south"],
+            proportions=[params["CS"], 1 - params["CS"]]
+    )
+    demography.add_population_split(time=params["T1"], derived=["north", "south"], ancestral="COS")
     return demography
 
 
