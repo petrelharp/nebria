@@ -1,4 +1,4 @@
-basedir = "post_500/"
+basedir = "two_sims/"
 
 runs <- read.csv(paste0(basedir, "param_values.csv"))
 
@@ -31,3 +31,15 @@ for (j in 1:nrow(runs)) {
 }
 
 write.csv(runs, file=paste0(basedir, "results.csv"), row.names=FALSE)
+
+# Combine all simulation log files into one
+read_plus <- function(flnm, ...){
+  read_csv(flnm, show_col_types = FALSE, ...) %>% mutate(filename = flnm)
+}
+
+run_folders <- paste0(basedir, runs$id)
+log_files <- list.files(run_folders, "sim_.*.log", recursive = TRUE, full.names=TRUE)
+all_gens <- log_files %>% map_df(~read_plus(., comment = "#"))
+
+write.csv(all_gens, file=paste0(basedir, "results_all_gens.csv"), row.names=FALSE)
+
