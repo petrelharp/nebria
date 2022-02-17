@@ -4,6 +4,7 @@ import time
 import pyslim, tskit, msprime
 import numpy as np
 import pandas as pd
+import json
 
 import matplotlib.pyplot as plt
 import matplotlib.collections as mc
@@ -182,7 +183,7 @@ for recap_rep in range(replicates["recapitation"]):
 
     recap_seed = rng.integers(1000000)
     recap_row = rng.integers(recap.posterior_length)
-    demog = recap.get_demography(recap_row)
+    demog, recap_params = recap.get_demography(recap_row)
     ts = msprime.sim_ancestry(
             initial_state=orig_ts,
             demography=demog,
@@ -215,6 +216,8 @@ for recap_rep in range(replicates["recapitation"]):
         for match_rep in range(replicates["match_patch"]):
 
             repname = f"{basename}_{recap_seed}_{mut_seed}_{match_rep}"
+            with open(f"{repname}.json", "w") as f:
+                json.dump(recap_params, f)
 
             real_locs["match_patch"] = -1  # BEWARE!!! but pandas has no reasonable missing data type
             for name in real_locs.index:
