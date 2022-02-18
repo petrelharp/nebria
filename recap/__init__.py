@@ -41,7 +41,7 @@ def get_demography(rep=0):
             proportions=[params["CS"], 1 - params["CS"]]
     )
     demography.add_population_split(time=params["T1"], derived=["north", "south"], ancestral="COS")
-    return demography
+    return demography, params
 
 
 def setup(ts, demography):
