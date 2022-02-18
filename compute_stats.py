@@ -66,7 +66,7 @@ orig_ts = orig_ts.simplify(_alive_nodes, keep_input_roots=True)
 # then reassign these to north/middle/south
 # "populations" for recapitation.
 
-setup_demog = recap.get_demography()
+setup_demog, _ = recap.get_demography()
 orig_ts = pyslim.SlimTreeSequence(recap.setup(orig_ts, setup_demog))
 
 # keep locations to make sure these don't change through recapitation, etc
