@@ -276,7 +276,7 @@ reproduction(p1, "F") {
 					loc = loc + rnorm(2, mean=0, sd=SIGMA);
 					num_hops = 1;
 					// NegBinom(r, p) is Pois(Gamma(shape=r, rate=(1-p)/p))
-					k = rpois(1, rexp(1, mu=MEAN_HOPS));
+					k = rpois(1, 1e-6 + rexp(1, mu=MEAN_HOPS)); 
 					while (num_hops < k & tries < 1000) {
 						current = p1.spatialMapValue('suitability', loc);
 						next_loc = loc + rnorm(2, mean=0, sd=SIGMA);
