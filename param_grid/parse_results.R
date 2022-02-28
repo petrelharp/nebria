@@ -1,4 +1,5 @@
-basedir = "two_sims/"
+library(tidyverse)
+basedir = "post_21000/"
 
 runs <- read.csv(paste0(basedir, "param_values.csv"))
 

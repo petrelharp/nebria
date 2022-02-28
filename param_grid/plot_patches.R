@@ -11,7 +11,7 @@ raster_switch_times_ago <- c(21,
                         (4.2 + 0.3)/2,
                         0) * 1000
 raster_switch_gens <- 21000 - raster_switch_times_ago
-basedir = "two_sims/"
+basedir = "post_21000/"
 
 sim_results <- read.csv(paste0(basedir, "results_all_gens.csv"))
 

@@ -1,4 +1,5 @@
 library(jsonlite)
+library(tidyverse)
 
 default_params <- list(
     DEBUG = FALSE,
@@ -40,7 +41,7 @@ if (FALSE) {
     )
 }
 
-if (TRUE) {
+if (FALSE) {
   # A few parameter values that give number of simulated patches close to 250
   default_params$NUM_GENS <- 21000
   default_params$START_TIME_AGO <- default_params$NUM_GENS
@@ -50,6 +51,19 @@ if (TRUE) {
                              P_D = c(0.44232404, 0.04112197),
                              YEAR_SHAPE = c(1.451843, 1.044548)
   )
+}
+
+if (TRUE) {
+  set.seed(1003)
+  # Draw 30 paramater values from the posterior distribution from the 500 simulations
+  default_params$NUM_GENS <- 21000
+  default_params$START_TIME_AGO <- default_params$NUM_GENS
+  basedir <- "./post_21000"
+  
+  # Posterior samples
+  post_500_res <- read.csv("post_500/posterior_samples.csv")
+  
+  param_values <- slice_sample(post_500_res, n = 30) %>% select(!X)
 }
 
 param_values$id <- sprintf("run%06d", 1:nrow(param_values))
