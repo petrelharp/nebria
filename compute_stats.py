@@ -37,10 +37,11 @@ patch_radius = 0.5  # km
 mut_rate = 2.8e-9
 
 ### number of replicates
+# the total number of replicates will the product of these
 replicates = {
-        "recapitation": 2,
-        "mutation": 2,
-        "match_patch": 2,
+        "recapitation": 5,
+        "mutation": 5,
+        "match_patch": 5,
 }
 
 
