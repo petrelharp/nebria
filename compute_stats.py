@@ -208,6 +208,7 @@ for recap_rep in range(replicates["recapitation"]):
                 rate=mut_rate,
                 model=msprime.SLiMMutationModel(type=0),
                 random_seed=mut_seed,
+                keep=False,
         )
 
         #######
@@ -220,18 +221,19 @@ for recap_rep in range(replicates["recapitation"]):
             with open(f"{repname}.json", "w") as f:
                 json.dump(recap_params, f)
 
-            real_locs["match_patch"] = -1  # BEWARE!!! but pandas has no reasonable missing data type
-            for name in real_locs.index:
+            match_patch_vec = np.repeat(-1, len(real_locs.index))
+            for k, name in enumerate(real_locs.index):
                 mp = rng.choice(close_patches[name])
                 ntries = 0
-                while mp in real_locs["match_patch"]:
+                while mp in match_patch_vec:
                     mp = rng.choice(close_patches[name])
                     ntries += 1
                     if ntries > 100:
                         raise ValueError("No available nearby patches to match.")
-                real_locs.loc[name, "match_patch"] = mp
+                match_patch_vec[k] = mp
 
-            assert np.all(real_locs["match_patch"] >= 0)
+            assert np.all(match_patch_vec >= 0)
+            real_locs["match_patch"] = match_patch_vec
 
             #######
             stat_setup_time = time.time()
@@ -254,14 +256,13 @@ for recap_rep in range(replicates["recapitation"]):
 
 
             # expected heterozygosity
-            real_locs["het"] = np.nan
+            het_vec = np.repeat(np.nan, len(real_locs.index))
             for k in range(real_locs.shape[0]):
                 name = real_locs.index[k]
                 samples = sample_sets[name]
                 if len(samples) > 0:
-                    pi = ts.diversity(samples, mode='site')
-                    real_locs.loc[real_locs.index[k], 'het'] = pi
-
+                    het_vec[k] = ts.diversity(samples, mode='site')
+            real_locs["het"] = het_vec
 
             # write out text file
             real_locs.to_csv(f"{repname}.stats.csv")
@@ -311,5 +312,4 @@ for recap_rep in range(replicates["recapitation"]):
 
 #######
 end_time = time.time()
-print(f"time: Statistics computed in {end_time - stat_setup_time}.")
 print(f"time: Total time: {end_time - start_time}.")
