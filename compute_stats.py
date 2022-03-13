@@ -23,6 +23,10 @@ if not os.path.isfile(ts_file):
     raise ValueError(f"File {ts_file} does not exist.")
 
 basename = ts_file.replace(".trees", "")
+basedir = f"{basename}_stats"
+if not os.path.exists(basedir):
+    os.makedirs(basedir)
+
 
 start_time = time.time()
 rng = np.random.default_rng()
@@ -217,7 +221,7 @@ for recap_rep in range(replicates["recapitation"]):
 
         for match_rep in range(replicates["match_patch"]):
 
-            repname = f"{basename}_{recap_seed}_{mut_seed}_{match_rep}"
+            repname = f"{basedir}/stats_{recap_seed}_{mut_seed}_{match_rep}"
             with open(f"{repname}.json", "w") as f:
                 json.dump(recap_params, f)
 
