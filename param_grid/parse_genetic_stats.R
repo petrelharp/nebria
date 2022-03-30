@@ -24,6 +24,11 @@ if(nrow(all_stats) != length(base_files)*nsites){
   print("Error: wrong number of rows")
 }
 
+#all_stats$recap_rep <- sapply(strsplit(all_stats$rep, "_"), "[", 4)
+#all_stats$mut_rep <- sapply(strsplit(all_stats$rep, "_"), "[", 5)
+#all_stats$sample_rep <- sapply(strsplit(all_stats$rep, "_"), "[", 6)
+#all_stats$sim_rep <- sapply(strsplit(all_stats$rep, "_"), "[", 3)
+
 write.csv(all_stats, file=paste0(basedir, "stats_all.csv"), row.names=FALSE)
 
 pairstats_files <- list.files(basedir, pattern = "*\\.pairstats.csv", recursive = TRUE, full.names = TRUE)
