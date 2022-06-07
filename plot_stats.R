@@ -35,13 +35,18 @@ library(sf)
 library(stars)
 
 source("data/mapping-fns.R", chdir=TRUE)
+source("data/helpers.R")
 
 sample_locs = read.csv("sample_locs.csv")
+sample_locs$site_name <- transl(sample_locs$site_name)
 
 stats_data = read.csv(sprintf("%s.stats.csv", basename))
+stats_data$site_name <- transl(stats_data$site_name)
 stats_data = merge(sample_locs, stats_data, all=TRUE)
 
 pairs_data = read.csv(sprintf("%s.pairstats.csv", basename))
+pairs_data$loc1 <- transl(pairs_data$loc1)
+pairs_data$loc2 <- transl(pairs_data$loc2)
 pairs_data = pairs_data[,setdiff(colnames(pairs_data), "X")]
 
 stats = st_as_sf(
@@ -63,14 +68,6 @@ l_lines = lapply(1:nrow(pairs_data), function (k) {
 lc_lines = st_sfc(l_lines,
                   crs = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0")
 
-make_names = function (a, b) {
-    paste(
-          ifelse(a < b, a, b),
-          ifelse(a < b, b, a),
-          sep="_"
-    )
-}
-
 pair_stats = st_sf(
                pairs_data,
                row.names = make_names(
@@ -85,6 +82,8 @@ pair_stats$distance = st_length(st_geometry(pair_stats))
 
 ###
 # project points onto the line between the furthest-apart points
+# NOTE: this is now done in setup_sample_locs.R, but leaving it here because
+# it makes the plot
 
 north_pt = "conness"
 south_pt = "army"
@@ -134,7 +133,7 @@ dev.off()
 
 
 pdf(file=sprintf("%s.dxy_by_pct.pdf", basename), width=6.5, height=15, pointsize=10)
-    yscale = 1.0 * max(pair_stats$dxy, na.rm=TRUE)
+    yscale <- 1.0 * max(pair_stats$dxy, na.rm=TRUE)
     par(mar=c(5, 6, 3, 5)+.1)
     plot(0, type='n',
          xlim=range(stats$pct),

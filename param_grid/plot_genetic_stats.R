@@ -1,8 +1,7 @@
 library(tidyverse)
 
 basedir = "post_21000/"
-all_stats <- read.csv(paste0(basedir, "stats_all.csv"))
-#all_pairstats <- read.csv(paste0(basedir, "pairstats_all.csv"))
+all_stats <- read.csv(file.path(basedir, "stats_all.csv"))
 
 all_stats$sim <- factor(sapply(strsplit(all_stats$rep, "_"), "[", 3))
 all_stats$recap <- factor(sapply(strsplit(all_stats$rep, "_"), "[", 5))
@@ -42,3 +41,11 @@ for (sim_id in c("2633463977134", "1843169324096", "1745513977159", "34248039771
     )
 }
 dev.off()
+
+# do the pairwise stats
+all_pairstats <- read.csv(file.path(basedir, "pairstats_all.csv"))
+all_pairstats$sim <- factor(sapply(strsplit(all_pairstats$rep, "_"), "[", 3))
+all_pairstats$recap <- factor(sapply(strsplit(all_pairstats$rep, "_"), "[", 5))
+all_pairstats$mut <- factor(sapply(strsplit(all_pairstats$rep, "_"), "[", 6))
+all_pairstats$sample <- sapply(strsplit(all_pairstats$rep, "_"), "[", 7)
+
