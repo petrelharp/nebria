@@ -27,7 +27,7 @@ if (length(args) != 1) {
 }
 
 basename = gsub(".trees$", "", args[1])
-outfile <- sprintf("%s.dxy_by_pct.pdf", basename)
+outfile <- sprintf("%s.dxy_by_pct.png", basename)
 
 library(png)
 
@@ -53,7 +53,7 @@ rownames(pairs_data) <- make_names(
                     sample_locs$short_name[match(pairs_data$loc2, sample_locs$site_name)]
                )
 
-pdf(file=outfile, width=6.5, height=15, pointsize=10)
+png(file=outfile, width=6.5, height=15, pointsize=10)
     yscale <- 1.0 * max(pairs_data$dxy, na.rm=TRUE)
     par(mar=c(5, 6, 3, 5)+.1)
     plot(0, type='n',
