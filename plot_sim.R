@@ -53,7 +53,7 @@ rownames(pairs_data) <- make_names(
                     sample_locs$short_name[match(pairs_data$loc2, sample_locs$site_name)]
                )
 
-png(file=outfile, width=6.5, height=15, pointsize=10)
+png(file=outfile, width=6.5 * 288, height=15 * 288, pointsize=10, res=288)
     yscale <- 1.0 * max(pairs_data$dxy, na.rm=TRUE)
     par(mar=c(5, 6, 3, 5)+.1)
     plot(0, type='n',
