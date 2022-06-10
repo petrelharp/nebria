@@ -44,3 +44,8 @@ make_names = function (a, b) {
     )
 }
 
+short_name <- function (x) {
+    return(
+           gsub("[^a-z].*", "", tolower(sapply(strsplit(x, " "), "[", 1)))
+    )
+}

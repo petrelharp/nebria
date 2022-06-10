@@ -35,7 +35,7 @@ source("data/helpers.R")
 
 sample_locs = read.csv("sample_locs.csv")
 sample_locs$site_name <- transl(sample_locs$site_name)
-sample_locs$short_name = gsub("[^a-z].*", "", tolower(sapply(strsplit(sample_locs$site_name, " "), "[", 1)))
+sample_locs$short_name = short_name(sample_locs$site_name)
 rownames(sample_locs) = sample_locs$short_name
 sample_locs <- sample_locs[order(sample_locs$pct),]
 
