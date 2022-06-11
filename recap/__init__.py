@@ -44,6 +44,25 @@ def get_demography(rep=0):
     return demography, params
 
 
+def recap_stats(rep=0, mut_rate=2.8e-9):
+    d, _ = get_demography(rep)
+    dd = d.debug()
+    p = [('north', ),
+         ('center', ),
+         ('south', ),
+         ('north', 'center'),
+         ('north', 'south'),
+         ('center', 'south')]
+    dxy = {}
+    for a in p:
+        if len(a) == 1:
+            l = {a[0] : 2}
+        else:
+            l = {a[0]: 1, a[1]: 1}
+        dxy[a] = 2 * dd.mean_coalescence_time(l) * mut_rate
+    return dxy
+
+
 def setup(ts, demography):
     """
     Reassign population labels in a tree sequence so that it's ready to be
