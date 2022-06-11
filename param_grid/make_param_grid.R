@@ -53,7 +53,7 @@ if (FALSE) {
   )
 }
 
-if (TRUE) {
+if (FALSE) {
   set.seed(1003)
   # Draw 30 paramater values from the posterior distribution from the 500 simulations
   default_params$NUM_GENS <- 21000
@@ -64,12 +64,30 @@ if (TRUE) {
   post_500_res <- read.csv("post_500/posterior_samples.csv")
   
   param_values <- slice_sample(post_500_res, n = 30) %>% select(!X)
+  param_values$id <- sprintf("run%06d", 1:nrow(param_values))
+
+  dir.create(basedir, showWarnings=FALSE)
+  write.csv(param_values, file=file.path(basedir, "param_values.csv"), row.names=FALSE)
 }
 
-param_values$id <- sprintf("run%06d", 1:nrow(param_values))
+if (TRUE) {
+  seed <- 1004
+  set.seed(seed)
+  # Draw paramater values from the posterior distribution from the 500 simulations
+  default_params$NUM_GENS <- 21000
+  default_params$START_TIME_AGO <- default_params$NUM_GENS
+  basedir <- "./post_21000b"
+  
+  # Posterior samples
+  post_500_res <- read.csv("post_500/posterior_samples.csv") %>% rename(id=X)
+  
+  param_values <- slice_sample(post_500_res, n = 10)
+  param_values$id <- sprintf("run%06d", param_values$id)
 
-dir.create(basedir, showWarnings=FALSE)
-write.csv(param_values, file=file.path(basedir, "param_values.csv"), row.names=FALSE)
+  dir.create(basedir, showWarnings=FALSE)
+  write.csv(param_values, file=file.path(basedir, sprintf("param_values_%d.csv", seed)), row.names=FALSE)
+}
+
 
 setup_files <- c("geo_layers")
 
