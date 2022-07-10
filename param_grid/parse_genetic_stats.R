@@ -9,7 +9,9 @@ base_files <- gsub("\\.stats.csv", "", stats_files)
 
 merge_stats <- function(base_file, ending){
   # ending is .stats.csv or .pairstats.csv
-  recap_params <- fromJSON(paste0(base_file, ".json"))
+    json_file <- paste0(base_file, ".json")
+    stopifnot(file.exists(json_file))
+  recap_params <- fromJSON(json_file)
   run_dir <- grep("run*", strsplit(base_file, "/")[[1]], value = TRUE)
   sim_params <- fromJSON(paste0(basedir, run_dir,"/","params.json"))
   stats <- read.csv(paste0(base_file, ending))

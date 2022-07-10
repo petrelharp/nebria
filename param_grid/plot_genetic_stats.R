@@ -149,7 +149,7 @@ norm <- function (x) {
 
 stopifnot(all(names(observed) == colnames(stats)))
 ## boxplots
-plot_ranges <- function (stats, observed, plot_ord, ...) {
+plot_ranges <- function (stats, observed, plot_ord, norm=identity, ...) {
     stats <- do.call(rbind, lapply(1:nrow(stats), function (j) norm(stats[j,])))
     observed <- norm(observed)
     statsum <- apply(stats, 2, quantile, probs=c(0.025, 0.25, 0.5, 0.75, 0.975))
@@ -171,8 +171,53 @@ plot_ranges <- function (stats, observed, plot_ord, ...) {
 }
 
 pdf(file="normalized_stats.pdf", width=36, height=6, pointsize=8)
+plot_ranges(stats, observed, plot_ord, main=basedir, norm=norm)
+dev.off()
+
+pdf(file="unnormalized_stats.pdf", width=36, height=6, pointsize=8)
 plot_ranges(stats, observed, plot_ord, main=basedir)
 dev.off()
+
+if (FALSE) {
+    # TODO: adjust this code to make plots for each location n-s
+    plot_ranges2 <- function (stats, pair_stats, ...) {
+        # from ../plot_stats.R
+        stats <- stats[order(stats$pct),]
+        yscale <- 1.0 * max(pair_stats$dxy, na.rm=TRUE)
+        par(mar=c(5, 6, 3, 5)+.1)
+        plot(0, type='n',
+             xlim=range(stats$pct),
+             xlab='PCT distance [m]',
+             ylim=c(0.75, nrow(stats)-0.75) * yscale, yaxt='n',
+             ylab='',
+             main="dxy"
+        )
+        axis(2, las=2, tick=FALSE,
+             at=(1:nrow(stats) - 0.5) * yscale,
+             labels=stats$short_name
+        )
+        abline(h=(0:nrow(stats)) * yscale, lwd=2, col=adjustcolor('black', 0.5))
+        axis(4, las=2, tick=TRUE,
+             at=(0:nrow(stats)) * yscale,
+             labels=sprintf(
+                "%0.1e",
+                (0:nrow(stats)) * yscale - 2 * rep(0:nrow(stats), each=2)[1:(nrow(stats)+1)] * yscale
+            )
+        )
+        for (k in 1:nrow(stats)) {
+            ref = stats$short_name[k]
+            ii = match(make_names(ref, stats$short_name), pair_stats$pair_name)
+            y = yscale * (k-1) + pair_stats$dxy[ii]
+            abline(h=y[k], lty=3, col=adjustcolor(k, 0.5))
+            lines(stats$pct, y, col=k, lty=k, type='b', pch=20)
+            points(stats$pct[k], y[k], pch="*", cex=5, col=k)
+        }
+    }
+
+    pdf(file="normalized_stats2.pdf", width=6.5, height=15, pointsize=10)
+        plot_ranges2(observed_stats, observed_pairstats)
+    dev.off()
+}
 
 ## PCA
 
