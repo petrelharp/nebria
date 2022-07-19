@@ -316,9 +316,9 @@ late() {
 	inds[inds.age > 0].fitnessScaling = 0.0;
 	// cannibalism
 	larvae = inds[inds.age == 0];
-	density = i1.totalOfNeighborStrengths(larvae);
+	density = i1.localPopulationDensity(larvae);
 	habitat = p1.spatialMapValue('habitat', larvae.spatialPosition);
-	larvae.fitnessScaling = pmax(EPS, habitat) * K/density;
+	larvae.fitnessScaling = pmax(EPS, habitat * K/density);
 	defineGlobal("NUM_JUVENILES", length(larvae));
 	if (DEBUG) {
 		defineGlobal("MEAN_CHILDREN", mean(inds[inds.age > 0].getValue("children")));
