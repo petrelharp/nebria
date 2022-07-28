@@ -7,10 +7,11 @@ default_params <- list(
     STEPSIZE = 1,
     POP_SIZE = 100,
     P_D = 0.2,
-    YEAR_SHAPE = 1.5
+    YEAR_SHAPE = 1.5,
+    DISPERSAL_SIGMA = 1.0
 )
 
-if (FALSE) {
+if (TRUE) {
     # Do first round of sims to get posterior
     default_params$NUM_GENS <- 500
     default_params$START_TIME_AGO <- default_params$NUM_GENS
@@ -22,11 +23,15 @@ if (FALSE) {
     )
 
     basedir <- "./post_500"
-    nreps <- 500
+    nreps <- 50
     base_param_values <- do.call(expand.grid, values)
     param_values <- data.frame(lapply(base_param_values, function (x) {
                 c(x, min(x) + runif(nreps - length(x)) * (max(x) - min(x)))
         }))
+    param_values$id <- sprintf("run%06d", 1:nrow(param_values))
+    dir.create(basedir, showWarnings=FALSE)
+    write.csv(param_values, file=file.path(basedir, "param_values.csv"), row.names=FALSE)
+
 }
 
 if (FALSE) {
@@ -70,7 +75,7 @@ if (FALSE) {
   write.csv(param_values, file=file.path(basedir, "param_values.csv"), row.names=FALSE)
 }
 
-if (TRUE) {
+if (FALSE) {
   seed <- 1004
   set.seed(seed)
   # Draw paramater values from the posterior distribution from the 500 simulations

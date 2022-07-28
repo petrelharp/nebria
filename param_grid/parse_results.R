@@ -1,5 +1,5 @@
 library(tidyverse)
-basedir = "post_21000/"
+basedir = "post_500/"
 
 runs <- read.csv(paste0(basedir, "param_values.csv"))
 
