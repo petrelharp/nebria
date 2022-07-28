@@ -23,7 +23,7 @@ if (TRUE) {
     )
 
     basedir <- "./post_500"
-    nreps <- 50
+    nreps <- 500
     base_param_values <- do.call(expand.grid, values)
     param_values <- data.frame(lapply(base_param_values, function (x) {
                 c(x, min(x) + runif(nreps - length(x)) * (max(x) - min(x)))
