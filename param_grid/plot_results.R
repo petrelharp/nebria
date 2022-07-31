@@ -1,4 +1,6 @@
-runs <- read.csv("sim_runs/results.csv")
+library(tidyverse)
+
+runs <- read.csv("post_500/results.csv")
 varnames <- c("POP_SIZE", "DISPERSAL_SIGMA", "P_D", "YEAR_SHAPE")
 
 pairs(runs[,c(varnames, "num_individuals", "num_patches", "slope", "slope_patches", "num_gens")],
@@ -28,3 +30,18 @@ with(runs, hist(num_juveniles/num_individuals))
 # number of individuals per patch
 with(runs, hist(num_individuals/num_patches, breaks=30))
 
+ggplot(runs, aes(x = DISPERSAL_SIGMA, y = num_patches)) +
+  geom_point()
+
+ggplot(runs, aes(x = P_D, y = num_patches)) +
+  geom_point()
+
+ggplot(runs, aes(x = POP_SIZE, y = num_patches)) +
+  geom_point()
+
+ggplot(runs, aes(x = YEAR_SHAPE, y = num_patches)) +
+  geom_point()
+
+hist(runs$num_patches)
+
+filter(runs, between(num_patches, 240, 260))

@@ -11,7 +11,7 @@ default_params <- list(
     DISPERSAL_SIGMA = 1.0
 )
 
-if (TRUE) {
+if (FALSE) {
     # Do first round of sims to get posterior
     default_params$NUM_GENS <- 500
     default_params$START_TIME_AGO <- default_params$NUM_GENS
@@ -34,16 +34,19 @@ if (TRUE) {
 
 }
 
-if (FALSE) {
+if (TRUE) {
     # A few parameter values that give number of simulated patches close to 250
     default_params$NUM_GENS <- 21000
     default_params$START_TIME_AGO <- default_params$NUM_GENS
-    basedir <- "./three_sims"
-    param_values <- data.frame(POP_SIZE = c(69.7, 310.8, 111.9),
-                               DISPERSAL_SIGMA = c(1.87, 0.28, 0.75),
-                               P_D = c(0.48, 0.26, 0.08),
-                               YEAR_SHAPE = c(1.95, 1.59, 1.26)
+    param_values <- data.frame(POP_SIZE = c(122.21205, 185.63237, 176.41170),
+                               DISPERSAL_SIGMA = c(0.8260641, 1.8096178, 0.7656113),
+                               P_D = c(0.33140315, 0.03724710, 0.07629081),
+                               YEAR_SHAPE = c(1.983962, 1.050907, 1.574293)
     )
+    basedir <- "./three_sims"
+    param_values$id <- sprintf("run%06d", 1:nrow(param_values))
+    dir.create(basedir, showWarnings=FALSE)
+    write.csv(param_values, file=file.path(basedir, "param_values.csv"), row.names=FALSE)
 }
 
 if (FALSE) {
