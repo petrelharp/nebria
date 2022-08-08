@@ -5,13 +5,13 @@
 #SBATCH --time=48:00:00                 ### WallTime
 #SBATCH --nodes=1                       ### Number of Nodes
 #SBATCH --ntasks=1                      ### Number of tasks per array job
-#SBATCH --array=0-2%24                  ### Array index
+#SBATCH --array=0-9%24                  ### Array index
 #SBATCH --cpus-per-task=1               ### Number of CPU cores per task
 #SBATCH --mem=48G
 
 slim -v
 
-DIRS=($(find three_sims -mindepth 1 -type 'd' -name 'run*'))
+DIRS=($(find post_21000 -mindepth 1 -type 'd' -name 'run*'))
 DIR=${DIRS[$SLURM_ARRAY_TASK_ID]}
 
 echo "Doing:"

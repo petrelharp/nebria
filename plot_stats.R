@@ -30,9 +30,9 @@ if (length(args) != 1) {
 basename = gsub(".trees$", "", args[1])
 
 library(png)
-library(tidyverse)
 library(sf)
 library(stars)
+library(tidyverse)
 
 source("data/mapping-fns.R", chdir=TRUE)
 source("data/helpers.R")

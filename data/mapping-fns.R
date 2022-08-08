@@ -1,7 +1,7 @@
 library(stars)
 library(sf)
-library(tidyverse)
 library(tigris)
+library(tidyverse)
 
 # the PROJ.4 string we're using
 .proj4 <- "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"

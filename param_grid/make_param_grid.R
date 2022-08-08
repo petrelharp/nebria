@@ -34,7 +34,7 @@ if (FALSE) {
 
 }
 
-if (TRUE) {
+if (FALSE) {
     # A few parameter values that give number of simulated patches close to 250
     default_params$NUM_GENS <- 21000
     default_params$START_TIME_AGO <- default_params$NUM_GENS
@@ -61,9 +61,9 @@ if (FALSE) {
   )
 }
 
-if (FALSE) {
+if (TRUE) {
   set.seed(1003)
-  # Draw 30 paramater values from the posterior distribution from the 500 simulations
+  # Draw 30 parameter values from the posterior distribution from the 500 simulations
   default_params$NUM_GENS <- 21000
   default_params$START_TIME_AGO <- default_params$NUM_GENS
   basedir <- "./post_21000"
@@ -71,7 +71,7 @@ if (FALSE) {
   # Posterior samples
   post_500_res <- read.csv("post_500/posterior_samples.csv")
   
-  param_values <- slice_sample(post_500_res, n = 30) %>% select(!X)
+  param_values <- slice_sample(post_500_res, n = 10) %>% select(!X)
   param_values$id <- sprintf("run%06d", 1:nrow(param_values))
 
   dir.create(basedir, showWarnings=FALSE)
