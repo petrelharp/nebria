@@ -62,20 +62,44 @@ if (FALSE) {
 }
 
 if (TRUE) {
-  set.seed(1003)
+  set.seed(1005)
   # Draw 30 parameter values from the posterior distribution from the 500 simulations
   default_params$NUM_GENS <- 21000
   default_params$START_TIME_AGO <- default_params$NUM_GENS
-  basedir <- "./post_21000"
+  basedir <- "./post_21000_add"
   
   # Posterior samples
   post_500_res <- read.csv("post_500/posterior_samples.csv")
   
   param_values <- slice_sample(post_500_res, n = 10) %>% select(!X)
-  param_values$id <- sprintf("run%06d", 1:nrow(param_values))
+  param_values$id <- sprintf("run%06d", (1:nrow(param_values)) + 10)
 
   dir.create(basedir, showWarnings=FALSE)
   write.csv(param_values, file=file.path(basedir, "param_values.csv"), row.names=FALSE)
+}
+
+if (FALSE) {
+  # Add more simulations
+  # With parameter values drawn from the posterior distribution from the 500 simulations
+  n_add <- 10
+  set.seed(1005)
+
+  default_params$NUM_GENS <- 21000
+  default_params$START_TIME_AGO <- default_params$NUM_GENS
+  basedir <- "./post_21000"
+  
+  run_folders_existing <- list.dirs(basedir, recursive = FALSE, full.names=FALSE)
+  existing_ids <- as.numeric(gsub("run0*", "", run_folders_existing))
+  
+  # Posterior samples
+
+  post_500_res <- read.csv("post_500/posterior_samples.csv")
+  
+  param_values <- slice_sample(post_500_res, n = n_add) %>% select(!X)
+  param_values$id <- sprintf("run%06d", (1:nrow(param_values)) + max(existing_ids))
+  existing_param_values <- read.csv(file.path(basedir, "param_values.csv"))
+  all_param_values <- rbind(existing_param_values, param_values)
+  write.csv(all_param_values, file=file.path(basedir, "param_values.csv"), row.names=FALSE)
 }
 
 if (FALSE) {
@@ -99,7 +123,7 @@ if (FALSE) {
 
 setup_files <- c("geo_layers")
 
-for (j in 1:nrow(param_values)) {
+for(j in 1:nrow(param_values)) {
     this_dir <- file.path(basedir, param_values$id[j])
     dir.create(this_dir, recursive=TRUE, showWarnings=FALSE)
     params <- default_params

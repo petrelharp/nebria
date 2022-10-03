@@ -221,12 +221,44 @@ if (FALSE) {
 
 ## PCA
 
+# Remove row 247 because it has NA for the pairwise stats. I don't know why, I need to figure it out
+# Actually replace row 247 with a duplicate of row 246 because the rest of the code depends on having the same number of rows
+
+stats[247,] <- stats[246,]
+sum(is.na(stats)) # should be 0
 pc_stats <- prcomp(stats)
 for (k in 1:4) {
     rep_info[[paste0("PC", k)]] <- pc_stats$x[,k]
 }
 
+# Convert observed data into PC space
+pc_observed <- predict(pc_stats, data.frame(t(observed)))
+
 pdf("sims_pca.pdf", width=12, height=5, pointsize=10)
     ggplot(rep_info, aes(x=PC1, y=PC2, col=P_D)) + 
         geom_point() + facet_wrap(~cut(POP_SIZE,3))
 dev.off()
+
+ggplot(rep_info) +
+  geom_point(aes(x = PC1, y = PC2, col = sim)) +
+  geom_point(aes(x = pc_observed[,'PC1'], y = pc_observed[,'PC2']))
+ggplot(rep_info) +
+  geom_point(aes(x = PC3, y = PC4, col = sim)) +
+  geom_point(aes(x = pc_observed[,'PC3'], y = pc_observed[,'PC4']))
+
+ggplot(rep_info) +
+  geom_point(aes(x = PC1, y = PC2, col = recap)) +
+  geom_point(aes(x = pc_observed[,'PC1'], y = pc_observed[,'PC2'])) +
+  facet_wrap(~sim)
+ggplot(rep_info) +
+  geom_point(aes(x = PC3, y = PC4, col = recap)) +
+  geom_point(aes(x = pc_observed[,'PC3'], y = pc_observed[,'PC4'])) +
+  facet_wrap(~sim)
+
+plot(pc_stats$sdev^2/sum(pc_stats$sdev^2))
+one_sim <- filter(rep_info, sim == 3696507884660)
+nrow(one_sim)
+length(unique(one_sim$mut))
+length(unique(one_sim$rep))
+length(unique(one_sim$recap))
+
