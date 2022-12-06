@@ -62,15 +62,16 @@ if (FALSE) {
 }
 
 if (TRUE) {
-  # Draw 30 parameter values from the posterior distribution from the 500 simulations
+  # Draw parameter values from the posterior distribution from the 500 simulations
   default_params$NUM_GENS <- 21000
   default_params$START_TIME_AGO <- default_params$NUM_GENS
-  basedir <- "./post_21000_add2"
+  datestring = format(Sys.time(), "%Y-%m-%d")
+  basedir <- paste0("./post_21000_", datestring)
   
   # Posterior samples
   post_500_res <- read.csv("post_500/posterior_samples.csv")
   
-  param_values <- slice_sample(post_500_res, n = 10) %>% select(!X)
+  param_values <- slice_sample(post_500_res, n = 100) %>% select(!X)
   param_values$id <- sprintf("run%06d", (1:nrow(param_values)) + 20)
 
   dir.create(basedir, showWarnings=FALSE)
