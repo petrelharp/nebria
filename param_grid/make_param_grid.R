@@ -72,7 +72,7 @@ if (TRUE) {
   post_500_res <- read.csv("post_500/posterior_samples.csv")
   
   param_values <- slice_sample(post_500_res, n = 100) %>% select(!X)
-  param_values$id <- sprintf("run%06d", (1:nrow(param_values)) + 20)
+  param_values$id <- sprintf("run_%s_%06d", format(Sys.time(), "%Y-%m-%d"), (1:nrow(param_values)))
 
   dir.create(basedir, showWarnings=FALSE)
   write.csv(param_values, file=file.path(basedir, "param_values.csv"), row.names=FALSE)
