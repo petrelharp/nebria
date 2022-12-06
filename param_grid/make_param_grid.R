@@ -62,17 +62,16 @@ if (FALSE) {
 }
 
 if (TRUE) {
-  set.seed(1005)
   # Draw 30 parameter values from the posterior distribution from the 500 simulations
   default_params$NUM_GENS <- 21000
   default_params$START_TIME_AGO <- default_params$NUM_GENS
-  basedir <- "./post_21000_add"
+  basedir <- "./post_21000_add2"
   
   # Posterior samples
   post_500_res <- read.csv("post_500/posterior_samples.csv")
   
   param_values <- slice_sample(post_500_res, n = 10) %>% select(!X)
-  param_values$id <- sprintf("run%06d", (1:nrow(param_values)) + 10)
+  param_values$id <- sprintf("run%06d", (1:nrow(param_values)) + 20)
 
   dir.create(basedir, showWarnings=FALSE)
   write.csv(param_values, file=file.path(basedir, "param_values.csv"), row.names=FALSE)
