@@ -1,7 +1,7 @@
 library(jsonlite)
 library(tidyverse)
 
-basedir = "post_21000/"
+basedir = "post_21000_2022-12-05/"
 nsites = 27
 
 stats_files <- list.files(basedir, pattern = "*\\.stats.csv", recursive = TRUE, full.names = TRUE)
