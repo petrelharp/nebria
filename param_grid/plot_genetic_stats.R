@@ -1,56 +1,22 @@
 library(tidyverse)
 source("../data/helpers.R")
 
-# N/S split is on this longitude
-long_break <- -118.68
+# Observed heterozygosity and pairwise stats
+observed <- read.csv("cleaned_results/observed.csv")
+# Simulated heterozygosity and pairwise stats
+stats <- read.csv("cleaned_results/stats.csv")
+# Parameters for each simulation and replicate
+rep_info <- read.csv("cleaned_results/rep_info.csv")
+rep_info <- rep_info |> mutate(across(c(sim, recap, mut, sample), factor))
+# Sampling locations
+sample_locs <- read.csv("cleaned_results/sample_locs.csv")
+# Stats for all simulations
+all_stats <- read.csv("cleaned_results/all_stats.csv")
+# Pairwise stats for all simulations
+all_pairstats <- read.csv("cleaned_results/all_pairstats.csv")
 
-# the data
-observed_stats <- read.csv(file.path("../observed", "observe.stats.csv"))
-observed_stats$site_name <- transl(observed_stats$site_name)
-observed_pairstats <- read.csv(file.path("../observed", "observe.pairstats.csv"))
-observed_pairstats$loc1 <- transl(observed_pairstats$loc1)
-observed_pairstats$loc2 <- transl(observed_pairstats$loc2)
-observed_pairstats$pair_name <- make_names(short_name(observed_pairstats$loc1), short_name(observed_pairstats$loc2))
-sample_locs <- read.csv("../sample_locs.csv")
-sample_locs$site_name <- transl(sample_locs$site_name)
-stopifnot(nrow(observed_stats) == nrow(sample_locs))
-observed_stats <- merge(observed_stats, sample_locs)
-stopifnot(nrow(observed_stats) == nrow(sample_locs))
-observed_stats$short_name <- short_name(observed_stats$site_name)
-observed_stats$group <- ifelse(observed_stats$longitude < long_break, "N", "S")
-observed_pairstats$pct_dist <- abs(sample_locs$pct[observed_pairstats$loc1]
-                                   - sample_locs$pct[observed_pairstats$loc2])
-observed_pairstats$group <- paste(
-      observed_stats$group[match(short_name(observed_pairstats$loc1), observed_stats$short_name)],
-      observed_stats$group[match(short_name(observed_pairstats$loc2), observed_stats$short_name)],
-      sep="-"
-)
-
-basedir = "post_21000/"
-all_stats <- read.csv(file.path(basedir, "stats_all.csv"))
-
-all_stats$sim <- factor(sapply(strsplit(all_stats$rep, "_"), "[", 3))
-all_stats$recap <- factor(sapply(strsplit(all_stats$rep, "_"), "[", 5))
-all_stats$mut <- factor(sapply(strsplit(all_stats$rep, "_"), "[", 6))
-all_stats$sample <- sapply(strsplit(all_stats$rep, "_"), "[", 7)
-all_stats$site_name <- transl(all_stats$site_name)
-all_stats$short_name <- short_name(all_stats$site_name)
-
-rep_info <- data.frame( rep=unique(all_stats$rep) )
-rep_info$sim <- factor(sapply(strsplit(rep_info$rep, "_"), "[", 3))
-rep_info$recap <- factor(sapply(strsplit(rep_info$rep, "_"), "[", 5))
-rep_info$mut <- factor(sapply(strsplit(rep_info$rep, "_"), "[", 6))
-rep_info$sample <- sapply(strsplit(rep_info$rep, "_"), "[", 7)
-
-for (pn in c("T2", "T1", "CS", "AS", "NE", "Na", "Nc", "Ns", "POP_SIZE", "P_D", "YEAR_SHAPE")) {
-    rep_info[[pn]] <- NA
-    for (j in 1:nrow(rep_info)) {
-        this_rep <- rep_info$rep[j]
-        x <- all_stats[[pn]][all_stats$rep == this_rep]
-        stopifnot(length(unique(x)) == 1)
-        rep_info[[pn]][j] <- x[1]
-    }
-}
+observed_stats <- read.csv("cleaned_results/observed_stats.csv")
+observed_pairstats <- read.csv("cleaned_results/observed_pairstats.csv")
 
 if (FALSE) {
     # look at one sim
@@ -89,40 +55,6 @@ for (sim_id in c("2633463977134", "1843169324096", "1745513977159", "34248039771
 }
 dev.off()
 
-# do the pairwise stats
-all_pairstats <- read.csv(file.path(basedir, "pairstats_all.csv"))
-all_pairstats$sim <- factor(sapply(strsplit(all_pairstats$rep, "_"), "[", 3))
-all_pairstats$recap <- factor(sapply(strsplit(all_pairstats$rep, "_"), "[", 5))
-all_pairstats$mut <- factor(sapply(strsplit(all_pairstats$rep, "_"), "[", 6))
-all_pairstats$sample <- sapply(strsplit(all_pairstats$rep, "_"), "[", 7)
-all_pairstats$pair_name <- make_names(short_name(all_pairstats$loc1), short_name(all_pairstats$loc2))
-
-# remove self-dxy
-all_pairstats <- subset(all_pairstats, loc1 != loc2)
-
-# make matrix of all reps x all stats
-stats_names <- c(
-                 sprintf("het_%s", unique(short_name(all_stats$site_name))),
-                 sprintf("dxy_%s", unique(all_pairstats$pair_name))
-               )
-stats <- matrix(NA, nrow=length(unique(all_stats$rep)), ncol=length(stats_names))
-rownames(stats) <- rep_info$rep
-colnames(stats) <- stats_names
-for (j in 1:nrow(stats)) {
-    this_rep <- rownames(stats)[j]
-    x <- subset(all_stats, rep == this_rep)
-    het_cols <- sprintf("het_%s", x$short_name)
-    stats[j, het_cols] <- x$het
-    y <- subset(all_pairstats, rep == this_rep)
-    dxy_cols <- sprintf("dxy_%s", y$pair_name)
-    stats[j, dxy_cols] <- y$dxy
-}
-
-observed <- rep(NA, ncol(stats))
-names(observed) <- colnames(stats)
-observed[sprintf("het_%s", observed_stats$short_name)] <- observed_stats$het
-ut <- (observed_pairstats$loc1 != observed_pairstats$loc2)
-observed[sprintf("dxy_%s", observed_pairstats$pair_name[ut])] <- observed_pairstats$dxy[ut]
 
 # make a good order for plotting things:
 # first hets in order of pct,
@@ -137,6 +69,7 @@ key[sprintf("dxy_%s", observed_pairstats$pair_name[ut])] <- (
     + observed_stats$pct[short_name(observed_pairstats$loc2[ut])]
 )
 plot_ord <- rank(key)
+
 stopifnot(length(plot_ord) == length(observed))
 
 # normalization
@@ -221,18 +154,21 @@ if (FALSE) {
 
 ## PCA
 
-# Remove row 247 because it has NA for the pairwise stats. I don't know why, I need to figure it out
+# Remove row 247 for post_21000 because it has NA for the pairwise stats. I don't know why, I need to figure it out
 # Actually replace row 247 with a duplicate of row 246 because the rest of the code depends on having the same number of rows
 
 stats[247,] <- stats[246,]
 sum(is.na(stats)) # should be 0
-pc_stats <- prcomp(stats)
+
+# Divide by rowmeans
+# Explore ways to normalize because first PC is negative and constant
+pc_stats <- prcomp(stats[,-1]/rowMeans(stats[,-1]), scale = TRUE)
 for (k in 1:4) {
-    rep_info[[paste0("PC", k)]] <- pc_stats$x[,k]
+   rep_info[[paste0("PC", k)]] <- pc_stats$x[,k]
 }
 
 # Convert observed data into PC space
-pc_observed <- predict(pc_stats, data.frame(t(observed)))
+pc_observed <- predict(pc_stats, data.frame(t(observed/mean(observed$x))))
 
 pdf("sims_pca.pdf", width=12, height=5, pointsize=10)
     ggplot(rep_info, aes(x=PC1, y=PC2, col=P_D)) + 
