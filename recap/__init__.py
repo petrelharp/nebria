@@ -138,7 +138,7 @@ def assign_patches(ts, patch_radius):
     3. Merge any location with the largest other location within `patch_radius`
        that is not itself merged to a larger location.
     """
-    sample_indivs = ts.individuals_alive_at(0)
+    sample_indivs = pyslim.individuals_alive_at(ts, 0)
     sample_locs = np.array([ts.individual(i).location[:2] for i in sample_indivs])
 
     # first round to this many binary digits
