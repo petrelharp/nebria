@@ -23,7 +23,7 @@ if not os.path.isfile(ts_file):
     raise ValueError(f"File {ts_file} does not exist.")
 
 basename = ts_file.replace(".trees", "")
-basedir = f"{basename}_stats"
+basedir = f"{basename}_stats_mut"
 if not os.path.exists(basedir):
     os.makedirs(basedir)
 
@@ -37,8 +37,6 @@ max_dist = 10  # km
 min_patch_size = 10  # individuals
 # radius within which to merge groups of individuals
 patch_radius = 0.5  # km
-# mutation rate
-mut_rate = 2.8e-9
 
 ### number of replicates
 # the total number of replicates will the product of these
@@ -60,9 +58,9 @@ warnings.simplefilter('ignore', msprime.TimeUnitsMismatchWarning)
 
 # Load tree sequence, reduce to samples today 
 # and remove extra population (if present)
-orig_ts = pyslim.load(ts_file)
+orig_ts = tskit.load(ts_file)
 _alive_nodes = np.array(
-        [n for i in orig_ts.individuals_alive_at(0)
+        [n for i in pyslim.individuals_alive_at(orig_ts, 0)
             for n in orig_ts.individual(i).nodes
             if orig_ts.node(n).population == 1
 ])
@@ -72,7 +70,7 @@ orig_ts = orig_ts.simplify(_alive_nodes, keep_input_roots=True)
 # "populations" for recapitation.
 
 setup_demog, _ = recap.get_demography()
-orig_ts = pyslim.SlimTreeSequence(recap.setup(orig_ts, setup_demog))
+orig_ts = recap.setup(orig_ts, setup_demog)
 
 # keep locations to make sure these don't change through recapitation, etc
 ind_locs = np.array([ind.location for ind in orig_ts.individuals()])
@@ -119,7 +117,7 @@ for name in real_locs.index:
 if True:
     # Plot all individuals
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 6))
-    sample_indivs = orig_ts.individuals_alive_at(0)
+    sample_indivs = pyslim.individuals_alive_at(orig_ts, 0)
     sample_locs = np.array([orig_ts.individual(i).location[:2] for i in sample_indivs])
     ax1.scatter(sample_locs[:,0], sample_locs[:,1], marker=".", label="individuals", c='black', s=0.1)
     for ax in (ax1, ax2):
@@ -207,8 +205,10 @@ for recap_rep in range(replicates["recapitation"]):
     for mut_rep in range(replicates["mutation"]):
 
         mut_seed = rng.integers(1000000)
+        # Generate a random mutation rate from a uniform distribution
+        mut_rate = rng.uniform(2.0e-9, 5.6e-9)
         ts = msprime.sim_mutations(
-                ts,
+		ts,
                 rate=mut_rate,
                 model=msprime.SLiMMutationModel(type=0),
                 random_seed=mut_seed,
@@ -222,8 +222,10 @@ for recap_rep in range(replicates["recapitation"]):
         for match_rep in range(replicates["match_patch"]):
 
             repname = f"{basedir}/stats_{recap_seed}_{mut_seed}_{match_rep}"
+            recap_params_mut = recap_params.copy()
+            recap_params['mut_rate'] = mut_rate
             with open(f"{repname}.json", "w") as f:
-                json.dump(recap_params, f)
+                json.dump(recap_params_mut, f)
 
             match_patch_vec = np.repeat(-1, len(real_locs.index))
             for k, name in enumerate(real_locs.index):

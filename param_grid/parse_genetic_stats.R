@@ -4,7 +4,11 @@ library(tidyverse)
 basedir = "post_21000_2022-12-05/"
 nsites = 27
 
-stats_files <- list.files(basedir, pattern = "*\\.stats.csv", recursive = TRUE, full.names = TRUE)
+# Get a list of all files with single site stats in the desired directory (either not changing mutation rate or changing mutation rate)
+# dir = "stats/"
+dir = "stats_mut/"
+all_stats_files <- list.files(basedir, pattern = "*\\.stats.csv", recursive = TRUE, full.names = TRUE)
+stats_files <- all_stats_files[grep(dir, all_stats_files)]
 base_files <- gsub("\\.stats.csv", "", stats_files)
 
 merge_stats <- function(base_file, ending){
@@ -33,7 +37,8 @@ if(nrow(all_stats) != length(base_files)*nsites){
 
 write.csv(all_stats, file=paste0(basedir, "stats_all.csv"), row.names=FALSE)
 
-pairstats_files <- list.files(basedir, pattern = "*\\.pairstats.csv", recursive = TRUE, full.names = TRUE)
+all_pairstats_files <- list.files(basedir, pattern = "*\\.pairstats.csv", recursive = TRUE, full.names = TRUE)
+pairstats_files <- all_pairstats_files[grep(dir, all_pairstats_files)]
 base_files <- gsub("\\.pairstats.csv", "", pairstats_files)
 
 all_pairstats <- base_files %>% map_df(~merge_stats(., ending = ".pairstats.csv"))
