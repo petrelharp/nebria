@@ -1,0 +1,14 @@
+name: nebria
+channels:
+    - conda-forge
+    - bioconda
+dependencies:
+    - msprime
+    - pyslim
+    - tskit
+    - numpy
+    - scipy
+    - jupyterlab
+    - matplotlib
+    - slim
+    - pandas
