@@ -1,0 +1,13 @@
+#!/bin/bash
+#SBATCH -A kernlab
+#SBATCH --partition=kern                ### Partition
+#SBATCH --job-name=parse_genetic_stats           ### Job Name
+#SBATCH --time=60                 ### WallTime
+#SBATCH --nodes=1                       ### Number of Nodes
+#SBATCH --ntasks=1                      ### Number of tasks per array job
+#SBATCH --cpus-per-task=1               ### Number of CPU cores per task
+#SBATCH --mem=4G
+
+
+Rscript parse_genetic_stats.R
+Rscript combine_and_clean_genetic_stats.R
