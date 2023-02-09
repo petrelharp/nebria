@@ -18,13 +18,18 @@ observed_stats <- merge(observed_stats, sample_locs)
 stopifnot(nrow(observed_stats) == nrow(sample_locs))
 observed_stats$short_name <- short_name(observed_stats$site_name)
 observed_stats$group <- ifelse(observed_stats$longitude < long_break, "N", "S")
-observed_pairstats$pct_dist <- abs(sample_locs$pct[observed_pairstats$loc1]
-                                   - sample_locs$pct[observed_pairstats$loc2])
+
+observed_pairstats <- left_join(observed_pairstats, sample_locs, join_by(loc1 == site_name)) %>%
+  left_join(sample_locs, join_by(loc2 == site_name), suffix = c("1", "2")) %>%
+  select(loc1, loc2, dxy, pair_name, pct1, pct2) %>%
+  mutate(pct_dist = abs(pct1 - pct2))
+
 observed_pairstats$group <- paste(
   observed_stats$group[match(short_name(observed_pairstats$loc1), observed_stats$short_name)],
   observed_stats$group[match(short_name(observed_pairstats$loc2), observed_stats$short_name)],
   sep="-"
 )
+
 
 # Combine two simulation folders
 #basedir1 = "post_21000"
@@ -43,18 +48,25 @@ observed_pairstats$group <- paste(
 basedir = "post_21000_2022-12-05"
 all_stats <- read_csv(file.path(basedir, "stats_all.csv"))
 all_pairstats <- read_csv(file.path(basedir, "pairstats_all.csv"))
-all_stats$sim <- factor(sapply(str_match_all(all_stats$rep, "sim_([:digit:]+)_stats/stats_([:digit:]+)_([:digit:]+)_([:digit:]+)"), "[", 2))
-all_stats$recap <- factor(sapply(str_match_all(all_stats$rep, "sim_([:digit:]+)_stats/stats_([:digit:]+)_([:digit:]+)_([:digit:]+)"), "[", 3))
-all_stats$mut <- factor(sapply(str_match_all(all_stats$rep, "sim_([:digit:]+)_stats/stats_([:digit:]+)_([:digit:]+)_([:digit:]+)"), "[", 4))
-all_stats$sample <- factor(sapply(str_match_all(all_stats$rep, "sim_([:digit:]+)_stats/stats_([:digit:]+)_([:digit:]+)_([:digit:]+)"), "[", 5))
-all_stats$site_name <- transl(all_stats$site_name)
-all_stats$short_name <- short_name(all_stats$site_name)
+
+# Split string specifying replicate into strings for sim, recap, mut, and sample
+# Pattern to extract 
+
+split_rep <- function(rep){
+  match_pattern = "sim_([:digit:]+)_.+/.+_([:digit:]+)_([:digit:]+)_([:digit:]+)"
+  sim  <- as.character(sapply(str_match_all(rep, match_pattern), "[", 2))
+  recap  <- as.character(sapply(str_match_all(rep, match_pattern), "[", 3))
+  mut  <- as.character(sapply(str_match_all(rep, match_pattern), "[", 4))
+  sample  <- as.character(sapply(str_match_all(rep, match_pattern), "[", 5))
+  split <- tibble(sim, recap, mut, sample)
+  return(split)
+}
+
+all_stats <- all_stats %>% mutate(split_rep(rep),
+                                  short_name = short_name(site_name))
 
 rep_info <- data.frame( rep=unique(all_stats$rep) )
-rep_info$sim <- factor(sapply(str_match_all(rep_info$rep, "sim_([:digit:]+)_stats/stats_([:digit:]+)_([:digit:]+)_([:digit:]+)"), "[", 2))
-rep_info$recap <- factor(sapply(str_match_all(rep_info$rep, "sim_([:digit:]+)_stats/stats_([:digit:]+)_([:digit:]+)_([:digit:]+)"), "[", 3))
-rep_info$mut <- factor(sapply(str_match_all(rep_info$rep, "sim_([:digit:]+)_stats/stats_([:digit:]+)_([:digit:]+)_([:digit:]+)"), "[", 4))
-rep_info$sample <- factor(sapply(str_match_all(rep_info$rep, "sim_([:digit:]+)_stats/stats_([:digit:]+)_([:digit:]+)_([:digit:]+)"), "[", 5))
+rep_info <- rep_info %>%  mutate(split_rep(rep))
 
 for (pn in c("T2", "T1", "CS", "AS", "NE", "Na", "Nc", "Ns", "mut_rate", "POP_SIZE", "P_D", "YEAR_SHAPE")) {
   rep_info[[pn]] <- NA
@@ -67,12 +79,8 @@ for (pn in c("T2", "T1", "CS", "AS", "NE", "Na", "Nc", "Ns", "mut_rate", "POP_SI
 }
 
 # do the pairwise stats
-all_pairstats$sim <- factor(sapply(str_match_all(all_pairstats$rep, "sim_([:digit:]+)_stats/stats_([:digit:]+)_([:digit:]+)_([:digit:]+)"), "[", 2))
-all_pairstats$recap <- factor(sapply(str_match_all(all_pairstats$rep, "sim_([:digit:]+)_stats/stats_([:digit:]+)_([:digit:]+)_([:digit:]+)"), "[", 3))
-all_pairstats$mut <- factor(sapply(str_match_all(all_pairstats$rep, "sim_([:digit:]+)_stats/stats_([:digit:]+)_([:digit:]+)_([:digit:]+)"), "[", 4))
-all_pairstats$sample <- factor(sapply(str_match_all(all_pairstats$rep, "sim_([:digit:]+)_stats/stats_([:digit:]+)_([:digit:]+)_([:digit:]+)"), "[", 5))
-all_pairstats$pair_name <- make_names(short_name(all_pairstats$loc1), short_name(all_pairstats$loc2))
-
+all_pairstats <- all_pairstats %>% mutate(split_rep(rep),
+                                        pair_name = make_names(short_name(loc1), short_name(loc2)))
 # remove self-dxy
 all_pairstats <- subset(all_pairstats, loc1 != loc2)
 
@@ -118,6 +126,3 @@ write.csv(all_pairstats, file.path(results_folder, "all_pairstats.csv"))
 
 write.csv(observed_stats, file.path(results_folder, "observed_stats.csv"))
 write.csv(observed_pairstats, file.path(results_folder, "observed_pairstats.csv"))
-
-
-

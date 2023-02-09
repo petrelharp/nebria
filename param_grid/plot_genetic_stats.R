@@ -1,22 +1,24 @@
 library(tidyverse)
 source("../data/helpers.R")
-
+basedir <- "post_21000_2022-12-05"
 # Observed heterozygosity and pairwise stats
-observed <- read.csv("cleaned_results/observed.csv")
+observed_df <- read.csv(file.path(basedir, "cleaned_results/observed.csv"))
+observed <- observed_df$x
+names(observed) <- rownames(observed_df)
 # Simulated heterozygosity and pairwise stats
-stats <- read.csv("cleaned_results/stats.csv")
+stats <- read.csv(file.path(basedir,"cleaned_results/stats.csv")) %>% select(!X)
 # Parameters for each simulation and replicate
-rep_info <- read.csv("cleaned_results/rep_info.csv")
+rep_info <- read.csv(file.path(basedir,"cleaned_results/rep_info.csv"))
 rep_info <- rep_info |> mutate(across(c(sim, recap, mut, sample), factor))
 # Sampling locations
-sample_locs <- read.csv("cleaned_results/sample_locs.csv")
+sample_locs <- read.csv(file.path(basedir,"cleaned_results/sample_locs.csv"))
 # Stats for all simulations
-all_stats <- read.csv("cleaned_results/all_stats.csv")
+all_stats <- read.csv(file.path(basedir,"cleaned_results/all_stats.csv"))
 # Pairwise stats for all simulations
-all_pairstats <- read.csv("cleaned_results/all_pairstats.csv")
+all_pairstats <- read.csv(file.path(basedir,"cleaned_results/all_pairstats.csv"))
 
-observed_stats <- read.csv("cleaned_results/observed_stats.csv")
-observed_pairstats <- read.csv("cleaned_results/observed_pairstats.csv")
+observed_stats <- read.csv(file.path(basedir,"cleaned_results/observed_stats.csv"))
+observed_pairstats <- read.csv(file.path(basedir,"cleaned_results/observed_pairstats.csv"))
 
 if (FALSE) {
     # look at one sim
@@ -157,7 +159,7 @@ if (FALSE) {
 # Remove row 247 for post_21000 because it has NA for the pairwise stats. I don't know why, I need to figure it out
 # Actually replace row 247 with a duplicate of row 246 because the rest of the code depends on having the same number of rows
 
-stats[247,] <- stats[246,]
+#stats[247,] <- stats[246,]
 sum(is.na(stats)) # should be 0
 
 # Divide by rowmeans
@@ -168,7 +170,7 @@ for (k in 1:4) {
 }
 
 # Convert observed data into PC space
-pc_observed <- predict(pc_stats, data.frame(t(observed/mean(observed$x))))
+pc_observed <- predict(pc_stats, data.frame(t(observed/mean(observed))))
 
 pdf("sims_pca.pdf", width=12, height=5, pointsize=10)
     ggplot(rep_info, aes(x=PC1, y=PC2, col=P_D)) + 
