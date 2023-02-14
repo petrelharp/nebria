@@ -28,7 +28,7 @@ small_all_stats <- filter(all_stats, sim %in% subset_sims)
 ggplot() +
   geom_point(data = small_all_stats, aes(x = rep, y = het, col = sim)) +
   geom_point(data = observed_stats, aes(x = "observed", y = het))
-
+filter(rep_info, sim %in% subset_sims) %>% select(mut_rate, sim)
 small_pairstats <- filter(all_pairstats, sim %in% subset_sims)
 ggplot() +
   geom_point(data = small_pairstats, aes(x = rep, y = dxy, col = sim)) +
@@ -44,15 +44,14 @@ ggplot() +
 #stats[247,] <- stats[246,]
 sum(is.na(stats)) # should be 0
 
-# Divide by rowmeans
 # Explore ways to normalize because first PC is negative and constant
-pc_stats <- prcomp(stats[,-1]/rowMeans(stats[,-1]), scale = TRUE)
+pc_stats <- prcomp(stats[,-1], scale = TRUE)
 for (k in 1:4) {
   rep_info[[paste0("PC", k)]] <- pc_stats$x[,k]
 }
 
 # Convert observed data into PC space
-pc_observed <- predict(pc_stats, data.frame(t(observed/mean(observed$x))))
+pc_observed <- predict(pc_stats, data.frame(t(observed)))
 
 pdf("sims_pca.pdf", width=12, height=5, pointsize=10)
 ggplot(rep_info, aes(x=PC1, y=PC2, col=P_D)) + 
