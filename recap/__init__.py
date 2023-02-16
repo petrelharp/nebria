@@ -9,6 +9,7 @@ _post_file = importlib.resources.open_text(data, 'posterior.txt')
 _header = _post_file.readline().strip().split()
 _post = np.loadtxt(_post_file, skiprows=1)
 # keys are ['T2', 'T1', 'CS', 'AS', 'NE', 'Na', 'Nc', 'Ns']
+# ... but AS == 1 - CS, so we don't use AS
 posterior = { _header[k]: _post[:,k] for k in range(len(_header)) }
 posterior_length = _post.shape[0]
 
