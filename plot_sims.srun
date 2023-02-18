@@ -1,0 +1,21 @@
+#!/bin/bash
+#SBATCH -A kernlab
+#SBATCH --partition=kern                ### Partition
+#SBATCH --job-name=param_grid           ### Job Name
+#SBATCH --time=8:00:00                  ### WallTime
+#SBATCH --nodes=1                       ### Number of Nodes
+#SBATCH --ntasks=1                      ### Number of tasks per array job
+#SBATCH --cpus-per-task=1               ### Number of CPU cores per task
+#SBATCH --mem=4G
+
+FILES=($(find param_grid/post_21000_2022-12-05 -mindepth 3 -name "*.stats.csv"))
+
+# module load R/4.1.3
+
+for FILE in ${FILES[@]}
+do
+    X=${FILE%.stats.csv}
+    echo "Plotting $X"
+    Rscript plot_stats.R $X 
+done
+

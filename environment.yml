@@ -12,3 +12,16 @@ dependencies:
     - matplotlib
     - slim
     - pandas
+    - snakemake
+    - r-irkernel
+    - ipywidgets
+    - nodejs
+    - widgetsnbextension
+    - r-sf
+    - r-raster
+    - r-stars
+    - r-sp
+    - r-rgdal
+    - r-png
+    - r-tidyverse
+    - r-tigris

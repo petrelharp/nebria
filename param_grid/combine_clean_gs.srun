@@ -9,4 +9,4 @@
 #SBATCH --mem=4G
 
 
-Rscript parse_genetic_stats.R
+Rscript combine_and_clean_genetic_stats.R
