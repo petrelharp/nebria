@@ -1,0 +1,219 @@
+---
+title: "Close Simulations"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Read in simulation results
+
+- 50 SliM simulations, each from one combination of parameters chosen through abc based on number of patches
+
+- For each SLiM simulation:
+  - 5 recapitation replicates
+  - For each recapitation replicate:
+    - 5 mutation replicates, with mutation rate drawn from uniform 2.0e-9, 5.6e-9
+    - For each mutation replicate:
+      - 5 replicates of choosing patches to match
+
+```{r data, echo = FALSE, cache = TRUE}
+library(tidyverse)
+source("../data/helpers.R")
+basedir <- "post_21000_2022-12-05"
+# Observed heterozygosity and pairwise stats
+observed_df <- read.csv(file.path(basedir, "cleaned_results/observed.csv"))
+observed <- observed_df$x
+names(observed) <- rownames(observed_df)
+# Simulated heterozygosity and pairwise stats
+stats <- read.csv(file.path(basedir,"cleaned_results/stats.csv"))
+stats <- dplyr::select(stats, !X)
+# Parameters for each simulation and replicate
+rep_info <- read.csv(file.path(basedir,"cleaned_results/rep_info.csv"))
+rep_info <- rep_info |> mutate(across(c(sim, recap, mut, sample), factor))
+# Sampling locations
+sample_locs <- read.csv(file.path(basedir,"cleaned_results/sample_locs.csv"))
+# Stats for all simulations
+all_stats <- read.csv(file.path(basedir,"cleaned_results/all_stats.csv"))
+# Pairwise stats for all simulations
+all_pairstats <- read.csv(file.path(basedir,"cleaned_results/all_pairstats.csv"))
+
+observed_stats <- read.csv(file.path(basedir,"cleaned_results/observed_stats.csv"))
+observed_pairstats <- read.csv(file.path(basedir,"cleaned_results/observed_pairstats.csv"))
+
+```
+
+## Plot a subset of 10 simulations
+
+```{r ten_sims, echo=FALSE, cache =  TRUE}
+all_stats$sim <- factor(all_stats$sim)
+all_pairstats$sim <- factor(all_pairstats$sim)
+subset_sims <- sample(all_stats$sim, 10)
+small_all_stats <- filter(all_stats, sim %in% subset_sims)
+# Plot values of observed statistics for each simulation replicate
+ggplot() +
+  geom_point(data = small_all_stats, aes(x = rep, y = het, col = sim)) +
+  geom_point(data = observed_stats, aes(x = "observed", y = het)) +
+  theme(axis.text.x=element_blank())
+small_pairstats <- filter(all_pairstats, sim %in% subset_sims)
+ggplot() +
+  geom_point(data = small_pairstats, aes(x = rep, y = dxy, col = sim)) +
+  geom_point(data = observed_pairstats, aes(x = "observed", y = dxy))+
+  theme(axis.text.x=element_blank())
+```
+
+## PCA with unnormalized data
+
+
+```{r pca, echo=TRUE, cache =  TRUE}
+sum(is.na(stats)) # should be 0
+
+pc_stats <- prcomp(stats[,-1])
+for (k in 1:4) {
+  rep_info[[paste0("PC", k)]] <- pc_stats$x[,k]
+}
+
+# Convert observed data into PC space
+pc_observed <- predict(pc_stats, data.frame(t(observed)))
+ggplot(rep_info) +
+  geom_point(aes(x = PC1, y = PC2, col = sim)) +
+  geom_point(aes(x = pc_observed[,'PC1'], y = pc_observed[,'PC2'])) +
+  theme(legend.position="none")
+ggplot(rep_info) +
+  geom_point(aes(x = PC3, y = PC4, col = sim)) +
+  geom_point(aes(x = pc_observed[,'PC3'], y = pc_observed[,'PC4'])) +
+  theme(legend.position="none")
+```
+
+The loadings on PC1 are all positive and roughly constant
+
+```{r pca_loadings, echo=TRUE, cache =  TRUE}
+plot(pc_stats$rotation[,'PC1'])
+plot(pc_stats$rotation[,'PC2'])
+```
+
+## Look carefully at one SLiM simulation
+
+### Choose a simulation close to observed data
+
+First calculate euclidean distance between all simulated statistics and observed statistics, then choose closest one
+
+```{r choose_close, echo=TRUE, cache =  TRUE}
+sim_obs_dist <- rowSums((observed-stats)^2)
+min_index <- which.min(sim_obs_dist)
+min_info <- rep_info[min_index,]
+min_rep <- min_info$rep
+min_sim <- min_info$sim
+min_recap <- min_info$recap
+min_mut <- min_info$mut
+min_sample <- min_info$sample
+
+```
+
+### Ten closest recap replicates
+
+```{r close, cache = TRUE}
+sim_order <- order(sim_obs_dist)
+subset_sims <- unique(rep_info$sim[sim_order[1:10]])
+small_all_stats <- filter(all_stats, sim %in% subset_sims)
+# Plot values of observed statistics for each simulation replicate
+ggplot() +
+  geom_point(data = small_all_stats, aes(x = rep, y = het, col = sim)) +
+  geom_point(data = observed_stats, aes(x = "observed", y = het)) +
+  theme(axis.text.x=element_blank())
+small_pairstats <- filter(all_pairstats, sim %in% subset_sims)
+ggplot() +
+  geom_point(data = small_pairstats, aes(x = rep, y = dxy, col = sim)) +
+  geom_point(data = observed_pairstats, aes(x = "observed", y = dxy))+
+  theme(axis.text.x=element_blank())
+```
+
+### Genetic stats for single closest recapitation replicate
+
+```{r sim_plots, echo=TRUE, cache =  TRUE}
+sim_pairstats <- dplyr::filter(all_pairstats, rep == min_rep)
+sim_stats <- dplyr::filter(all_stats, rep == min_rep)
+ggplot(sim_stats, aes(x = pct, y = het, col = "simulated")) + 
+  geom_point() + 
+  geom_point(data = observed_stats, aes(x = pct, y = het, col = "observed"))
+ggplot(observed_pairstats, aes(x = pair_name, y = dxy, col = "observed")) + 
+  geom_point() +
+  geom_point(data = sim_pairstats, aes(x = pair_name, y = dxy, col = "simulated"))
+
+```
+
+### Genetic stats for all recapitation replicates
+
+```{r sim_plots2, echo=TRUE}
+sim_pairstats <- dplyr::filter(all_pairstats, sim == min_sim)
+sim_stats <- dplyr::filter(all_stats, sim == min_sim)
+ggplot(sim_stats, aes(x = pct, y = het)) + 
+  geom_point() + 
+  geom_point(data = observed_stats, aes(x = pct, y = het, col = "observed"))
+ggplot(sim_pairstats, aes(x = pair_name, y = dxy, col = "simulated")) + 
+  geom_point() + 
+  geom_point(data = observed_pairstats, aes(x = pair_name, y = dxy, col = "observed"))
+```
+
+### Try running ABC
+
+Before LGM:
+CS, AS - migration rates
+NE - ancestral population size
+Na, Nc, Ns - population sizes
+NE bigger than N
+
+Do some posterior predictive checks
+
+
+```{r abc, echo = FALSE}
+library(abc)
+
+#!!!! Why are there NA mutation rates? !!!!
+est_params <- c("T2", "T1", "CS", "AS", "NE", "Na", "Nc", "Ns", "mut_rate", "POP_SIZE", "P_D", "DISPERSAL_SIGMA", "YEAR_SHAPE")
+na_reps <- which(is.na(rep_info$mut_rate))
+abc_obs <- observed
+abc_sims <- stats %>% filter(!is.na(rep_info$mut_rate))
+abc_rep_info <- dplyr::select(rep_info, est_params) %>% filter(!is.na(mut_rate))
+abc_res2 <- abc(abc_obs, abc_rep_info, abc_sims , tol = 0.1, method = "rejection")
+# This only works with a higher tolerance, why?
+abc_res <- abc(abc_obs, abc_rep_info, abc_sims , tol = 0.2, method = "loclinear")
+abc_res3 <- abc(abc_obs, abc_rep_info, abc_sims , tol = 0.1, method = "ridge")
+```
+
+```{r plot_abc}
+rej_post <- data.frame(abc_res$unadj.values) %>% pivot_longer(everything(), names_to = "parameter")
+adj_post <- data.frame(abc_res$adj.values) %>% pivot_longer(everything(), names_to = "parameter")
+priors <- rep_info %>% dplyr::select(est_params) %>% pivot_longer(everything(), names_to = "parameter")
+
+ggplot(adj_post, aes(x = value, y = after_stat(density))) +
+  geom_histogram() +
+  geom_histogram(data = priors, fill = "blue", alpha = 0.5) +
+  facet_wrap(~parameter, scales = "free")
+
+ggplot(priors, aes(x = value, y = after_stat(density))) +
+  geom_density(fill = "blue", alpha = 0.5) +
+  geom_density(data = adj_post) +
+  facet_wrap(~parameter, scales = "free")
+```
+
+```{r}
+pairs(abc_res$adj.values )
+```
+
+```{r}
+estimates <- apply(abc_res$adj.values, 2, median)
+```
+
+### Test on held out simulation
+
+```{r test_abc}
+# Hold out a simulation and do ABC
+# Simulation we're using as observation
+set.seed(100)
+(sim_observed_num <- sample(levels(rep_info$sim), 1))
+(sim_observed_rows <- which(rep_info$sim == sim_observed_num))
+(sim_observed <- stats[sim_observed_rows,])
+
+```
