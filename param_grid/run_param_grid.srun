@@ -11,7 +11,7 @@
 
 slim -v
 
-DIRS=($(find post_21000_2022-12-05 -mindepth 1 -type 'd' -name 'run*'))
+DIRS=($(find estimated_sims_2023-02-18 -mindepth 1 -type 'd' -name 'run*'))
 DIR=${DIRS[$SLURM_ARRAY_TASK_ID]}
 
 echo "Doing:"
