@@ -68,7 +68,7 @@ all_stats <- all_stats %>% mutate(split_rep(rep),
 rep_info <- data.frame( rep=unique(all_stats$rep) )
 rep_info <- rep_info %>%  mutate(split_rep(rep))
 
-for (pn in c("T2", "T1", "CS", "AS", "NE", "Na", "Nc", "Ns", "mut_rate", "POP_SIZE", "P_D", "YEAR_SHAPE")) {
+for (pn in c("T2", "T1", "CS", "AS", "NE", "Na", "Nc", "Ns", "mut_rate", "POP_SIZE", "P_D", "DISPERSAL_SIGMA",  "YEAR_SHAPE")) {
   rep_info[[pn]] <- NA
   for (j in 1:nrow(rep_info)) {
     this_rep <- rep_info$rep[j]
@@ -110,7 +110,7 @@ observed[sprintf("dxy_%s", observed_pairstats$pair_name[ut])] <- observed_pairst
 
 # Write to file
 results_folder <- file.path(basedir, "cleaned_results")
-dir.create(results_folder)
+#dir.create(results_folder)
 # Observed heterozygosity and pairwise stats
 write.table(observed,  file.path(results_folder, "observed.csv"), sep = ",")
 # Simulated heterozygosity and pairwise stats
