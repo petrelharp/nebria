@@ -38,7 +38,15 @@ priors <- rep_info %>% dplyr::select(est_params) %>% pivot_longer(everything(), 
 
 estimates <- apply(abc_res$adj.values, 2, median)
 
-# Setup a new simulation with the estimated parameters
+# Setup a new simulation with parameters drawn from the posterior distribution
+
+set.seed(1000)
+nsamples <- 10
+draws <- sample_n(data.frame(abc_res$adj.values), nsamples)
+
+# Remove draws with negative parameters
+valid_draws <- filter(draws, if_all(names(draws), ~ . > 0))
+print(paste0(nrow(draws) - nrow(valid_draws), " row(s) removed because of negative param values"))
 
 default_params <- list(
   DEBUG = FALSE,
@@ -55,11 +63,12 @@ default_params$START_TIME_AGO <- default_params$NUM_GENS
 datestring = format(Sys.time(), "%Y-%m-%d")
 basedir <- paste0("./estimated_sims_", datestring)
 
-param_values <- data.frame(t(estimates))
+param_values <- valid_draws
 param_values$id <- sprintf("run_%s_%06d", datestring, (1:nrow(param_values)))
 
 dir.create(basedir, showWarnings=FALSE)
 setup_files <- c("geo_layers")
+write.csv(valid_draws, file.path(basedir,"posterior_draws.csv"))
 
 for(j in 1:nrow(param_values)) {
   this_dir <- file.path(basedir, param_values$id[j])

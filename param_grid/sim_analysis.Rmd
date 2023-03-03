@@ -183,8 +183,9 @@ abc_res3 <- abc(abc_obs, abc_rep_info, abc_sims , tol = 0.1, method = "ridge")
 ```
 
 ```{r plot_abc}
-rej_post <- data.frame(abc_res$unadj.values) %>% pivot_longer(everything(), names_to = "parameter")
-adj_post <- data.frame(abc_res$adj.values) %>% pivot_longer(everything(), names_to = "parameter")
+abc_vals <- data.frame(abc_res$unadj.values)
+rej_post <- abc_vals %>% pivot_longer(everything(), names_to = "parameter")
+adj_post <- abc_vals %>% pivot_longer(everything(), names_to = "parameter")
 priors <- rep_info %>% dplyr::select(est_params) %>% pivot_longer(everything(), names_to = "parameter")
 
 ggplot(adj_post, aes(x = value, y = after_stat(density))) +
@@ -199,7 +200,11 @@ ggplot(priors, aes(x = value, y = after_stat(density))) +
 ```
 
 ```{r}
-pairs(abc_res$adj.values )
+pairs(abc_vals)
+ggplot(abc_vals, aes(x = POP_SIZE, y = P_D)) +
+  geom_point()
+ggplot(abc_vals, aes(x = POP_SIZE, y = DISPERSAL_SIGMA)) +
+  geom_point()
 ```
 
 ```{r}
@@ -215,5 +220,4 @@ set.seed(100)
 (sim_observed_num <- sample(levels(rep_info$sim), 1))
 (sim_observed_rows <- which(rep_info$sim == sim_observed_num))
 (sim_observed <- stats[sim_observed_rows,])
-
 ```
