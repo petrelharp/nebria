@@ -1,3 +1,18 @@
+# April 13:
+
+TODO:
+ - ABC: run rejection sampling using existing files and do the associated QC
+ - run new sims with resulting parameters
+ - produce a VCF file with closest existing simulation
+ - analyze simulations:
+  * how much does dispersal matter for patterns? evaluate occupancy of niche model habitat
+  * look at the two north/south taxa: label ancestors by proportion of their descendants are in each 'species'
+ - graphics:
+  * histograms of parameter estimates
+  * explain model graphically
+  * show snapshots of 'where are beetles on landscape' at different time slices
+  * movie of stuff moving through time}
+
 # Dec 13:
 
 - will need to recapitate with yi-ming's msprime model
