@@ -10,7 +10,7 @@ dependencies:
     - scipy
     - jupyterlab
     - matplotlib
-    - slim
+    - slim=3.7.1
     - pandas
     - snakemake
     - r-irkernel

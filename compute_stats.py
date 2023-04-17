@@ -32,9 +32,9 @@ start_time = time.time()
 rng = np.random.default_rng()
 
 # maximum distance to match observed patches with sample locations
-max_dist = 10  # km
+max_dist = 20  # km
 # minimum size of a simulated group to be called a 'patch'
-min_patch_size = 10  # individuals
+min_patch_size = 20  # individuals
 # radius within which to merge groups of individuals
 patch_radius = 0.5  # km
 

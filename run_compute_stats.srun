@@ -5,11 +5,11 @@
 #SBATCH --time=8:00:00                 ### WallTime
 #SBATCH --nodes=1                       ### Number of Nodes
 #SBATCH --ntasks=1                      ### Number of tasks per array job
-#SBATCH --array=0-49                     ### Array index
+#SBATCH --array=0-7                     ### Array index
 #SBATCH --cpus-per-task=1               ### Number of CPU cores per task
 #SBATCH --mem=24G
 
-DIRS=($(find param_grid/post_21000_2022-12-05 -mindepth 1 -type 'd' -name 'run*'))
+DIRS=($(find param_grid/estimated_sims_2023-03-21 -mindepth 1 -type 'd' -name 'run*'))
 DIR=${DIRS[$SLURM_ARRAY_TASK_ID]}
 
 python compute_stats.py $DIR/sim_*.trees
