@@ -99,6 +99,17 @@ xy_to_slim <- function (xy) {
 sample_locs <- cbind(sample_locs, xy_to_slim(samples))
 write.csv(sample_locs, "sample_locs.csv", row.names=FALSE)
 
+# Fit a linear model using xy_to_slim to convert slim coordinates back to latitude longitude
+box <- c(-119.3971, -118.2471, 36.41429, 37.94329)
+input_xy <- expand.grid(long = seq(from = box[1], to = box[2], length.out = 10), lat = seq(from = box[3], to = box[4], length.out = 10))
+input_xy <- cbind(input_xy, xy_to_slim(input_xy))
+lat_model <- lm(lat ~ slim_y, data = input_xy)
+long_model <- lm(long ~ slim_x*slim_y, data = input_xy)
+
+# Check model
+
+#test <- cbind(input_xy, slim_to_latlong(input_xy))
+
 # cut out the white mountains
 wm_box <- SpatialPolygons(list(Polygons(list(
               Polygon(rbind(c(-118, 37.3),

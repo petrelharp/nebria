@@ -67,3 +67,15 @@ plot_setup <- function (...) {
 
 }
 
+# Convert slim coordinates to lat/long
+
+slim_to_latlong <- function(slim_coord){
+  # slim_coord is a data frame with columns slim_x and slim_y
+  # Transformations come from linear model fit in make_maps.R
+  slim_x <- slim_coord$slim_x
+  slim_y <- slim_coord$slim_y
+  lat <- 3.600427e+01  + slim_y*0.009010551
+  long <- -1.199959e+02 + slim_x*1.108775e-02 + slim_y*8.823142e-08 + slim_x*slim_y*1.336838e-06
+  return(data.frame(long = long, lat = lat))
+}
+
