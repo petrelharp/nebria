@@ -6,37 +6,60 @@ library(raster)
 library(ggforce)
 library(viridis)
 
-# Convert SLiM locations to coordinates
-raster_bbox <- c(-119.9996, -117.99993, 35.9995, 38.01215)
-res_x <- 0.742 # resolution in km (see make_maps.R)
-res_y <- 0.925 #resolution in km (see make_maps.R)
-horizontal_distance <- pointDistance(raster_bbox[c(1, 3)], raster_bbox[c(2, 3)], lonlat = TRUE)
-vertical_distance <- pointDistance(raster_bbox[c(1, 3)], raster_bbox[c(1, 4)], lonlat = TRUE)
-h_slim <- horizontal_distance/742
-v_slim <- vertical_distance/925
+# Convert slim coordinates to lat/long
 
+slim_to_latlong <- function(slim_coord){
+  # slim_coord is a data frame with columns slim_x and slim_y
+  # Transformations come from linear model fit in make_maps.R
+  slim_x <- slim_coord$slim_x
+  slim_y <- slim_coord$slim_y
+  lat <- 3.600427e+01  + slim_y*0.009010551
+  long <- -1.199959e+02 + slim_x*1.108775e-02 + slim_y*8.823142e-08 + slim_x*slim_y*1.336838e-06
+  return(data.frame(longitude = long, latitude = lat))
+}
+
+# Simulation results from "best fit" simulation
 anc <- read_csv("data_for_ancestry_plot.csv")
 all_inds <-  read_csv("data_for_all_inds.csv")
 pop_size <- read_csv("../param_grid/post_21000_2022-12-05/run_2022-12-05_000018/sim_1876298096991.log",
                        skip = 1)
-ggplot(pop_size, aes(x = years_ago, y = num_individuals)) +
-  geom_point() +
-  scale_x_reverse() +
-  theme_bw() +
-  theme(axis.title = element_text(size = 20),
-        axis.text = element_text(size = 15)) +
-  xlab("Years ago") +
-  ylab("Population size")
-ggsave("popsize.png")
-ggplot(pop_size, aes(x = years_ago, y = num_patches)) +
-  geom_point() +
-  scale_x_reverse() +
-  theme_bw() +
-  theme(axis.title = element_text(size = 20),
-        axis.text = element_text(size = 15)) +
-  xlab("Years ago") +
-  ylab("Occupied patches")
-ggsave("patches.png")
+
+# Convert slim coordinates to lat/long
+anc <- rename(anc, slim_x = loc1, slim_y = loc2)
+anc <- cbind(anc, slim_to_latlong(anc))
+all_inds <- rename(all_inds, slim_x = loc1, slim_y = loc2)
+all_inds <- cbind(all_inds, slim_to_latlong(all_inds))
+anc <-  st_as_sf(
+  anc,
+  coords = c("longitude", "latitude"), dim="XY",
+  crs = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
+)
+
+all_inds <-  st_as_sf(
+  all_inds,
+  coords = c("longitude", "latitude"), dim="XY",
+  crs = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
+)
+
+# Sample locations
+locations <- read.csv("../data/Nebria_ingens_samplesize.csv", header=TRUE, stringsAsFactors=FALSE) %>%
+  st_as_sf(
+    coords = c("longitude", "latitude"), dim="XY",
+    crs = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
+  )
+
+# Contour lines
+contour <- st_contour(read_stars("../data/merged_srtm.tif"), breaks=500*(1:8))
+shade <- read_stars("../data/cropped_SR_HR.tif")
+
+ggplot() +
+  geom_stars(data=shade) +
+  scale_fill_gradientn(colours=c("#000000BB", "#FFFFFFBB"), guide='none') +
+  geom_sf(data=contour, colour=adjustcolor("black", 0.1), fill=NA)
+  geom_sf(data=locations)
+ggsave("contours.png")
+
+### Plot ancestry ###
 #Remove points with 0 ancestry proportions
 anc <- filter(anc, anc_prop >0)
 # Add names of individuals
@@ -47,26 +70,20 @@ anc <- mutate(anc, time_name = factor(paste0(time, " ya"), levels = c("0 ya", "2
 anc_south <- filter(anc, ind_name == "Southernmost individual")
 anc_north <- filter(anc, ind_name == "Northernmost individual")
 
-ggplot(anc_south, aes(x = loc1, y = loc2, size = anc_prop)) + 
-  geom_point() +
-  theme_bw() +
-  theme(axis.text=element_blank(),
-        axis.title=element_blank()) +
-  coord_fixed(ratio = res_y/res_x) +
-  xlim(0, h_slim) +
-  ylim(0, v_slim) +
+ggplot() +
+  geom_stars(data=shade) +
+  scale_fill_gradientn(colours=c("#000000BB", "#FFFFFFBB"), guide='none') +
+  geom_sf(data=contour, colour=adjustcolor("black", 0.1), fill=NA) +
+  geom_sf(data = anc_south, aes(size = anc_prop)) +
   facet_wrap(~time_name) +
   theme(legend.position = "none", strip.text.x = element_text(size = 15))
 ggsave("anc_south.png")
 
-ggplot(anc_north, aes(x = loc1, y = loc2, size = anc_prop)) + 
-  geom_point() +
-  theme_bw() +
-  theme(axis.text=element_blank(),
-        axis.title=element_blank()) +
-  coord_fixed(ratio = res_y/res_x) +
-  xlim(0, h_slim) +
-  ylim(0, v_slim) +
+ggplot() +
+  geom_stars(data=shade) +
+  scale_fill_gradientn(colours=c("#000000BB", "#FFFFFFBB"), guide='none') +
+  geom_sf(data=contour, colour=adjustcolor("black", 0.1), fill=NA) +
+  geom_sf(data = anc_north, aes(size = anc_prop)) +
   facet_wrap(~time_name) +
   theme(legend.position = "none", strip.text.x = element_text(size = 15))
 ggsave("anc_north.png")
@@ -76,56 +93,18 @@ all_inds <- mutate(all_inds, time_name = factor(paste0(time, " ya"),
                                                            "13800 ya", "12300 ya",
                                                            "10013 ya", "6263 ya",
                                                            "2250 ya", "0 ya")))
-for(j in 1:length(levels(all_inds$time_name))){
-  print(j)
-  p <- ggplot(all_inds, aes(x = loc1, y = loc2)) +
-    geom_point(size =0.1) +
-    theme_bw() +
-    theme(axis.text=element_blank(),
-          axis.title=element_blank(),
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank()) +
-    coord_fixed(ratio = res_y/res_x) +
-    xlim(0, h_slim) +
-    ylim(0, v_slim) +
-    facet_wrap_paginate(~time_name, nrow = 1, ncol = 1, page = j) +
-    theme(strip.text.x = element_text(size = 25),
-          strip.background.x = element_blank())
-  ggsave(paste0("locations", j, ".png"), plot = p)
-}
-
-ggplot(all_inds, aes(x = loc1, y = loc2)) +
-    geom_point(size = 0.1) +
-    theme_bw() +
-    theme(axis.text=element_blank(),
-          axis.title=element_blank(),
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank()) +
-    coord_fixed(ratio = res_y/res_x) +
-    xlim(0, h_slim) +
-    ylim(0, v_slim) +
-    facet_wrap(~time_name, nrow = 2) +
-    theme(strip.text.x = element_text(size = 15),
-          strip.background.x = element_blank())
-ggsave("locations.png")
-
-
-locations <- read.csv("../data/Nebria_ingens_samplesize.csv", header=TRUE, stringsAsFactors=FALSE) %>%
-  st_as_sf(
-  coords = c("longitude", "latitude"), dim="XY",
-  crs = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
-)
-
-
-contour <- st_contour(read_stars("../data/merged_srtm.tif"), breaks=500*(1:8))
-shade <- read_stars("../data/cropped_SR_HR.tif")
-
 ggplot() +
   geom_stars(data=shade) +
   scale_fill_gradientn(colours=c("#000000BB", "#FFFFFFBB"), guide='none') +
-  geom_sf(data=contour, colour=adjustcolor("black", 0.1), fill=NA)
-  geom_sf(data=locations)
-ggsave("contours.png")
+  geom_sf(data=contour, colour=adjustcolor("black", 0.1), fill=NA) +
+  theme_bw() +
+  geom_sf(data = all_inds, size = 0.01) +
+  facet_wrap(~time_name, nrow = 2) +
+  theme(strip.text.x = element_text(size = 15),
+        strip.background.x = element_blank())
+ggsave("locations.png")
+
+### Plot simulated area ###
 
 library("rnaturalearth")
 library("rnaturalearthdata")
@@ -210,3 +189,24 @@ ggplot() +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
   scale_fill_viridis(name = "Habitat quality", option = "rocket", direction = -1, begin = )
   scale_fill_gradient(name = "Habitat quality", low = "white", high = "red")
+
+# Plot opulation size and occupied patches
+ggplot(pop_size, aes(x = years_ago, y = num_individuals)) +
+  geom_point() +
+  scale_x_reverse() +
+  theme_bw() +
+  theme(axis.title = element_text(size = 20),
+        axis.text = element_text(size = 15)) +
+  xlab("Years ago") +
+  ylab("Population size")
+ggsave("popsize.png")
+ggplot(pop_size, aes(x = years_ago, y = num_patches)) +
+  geom_point() +
+  scale_x_reverse() +
+  theme_bw() +
+  theme(axis.title = element_text(size = 20),
+        axis.text = element_text(size = 15)) +
+  xlab("Years ago") +
+  ylab("Occupied patches")
+ggsave("patches.png")
+  
