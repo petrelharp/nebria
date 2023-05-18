@@ -85,3 +85,33 @@ for(j in 1:nrow(param_values)) {
   }
 }
 
+#######Sean code
+#ABC:Possible method values are "rejection", "loclinear", "neuralnet" and "ridge".
+
+#First conduct Cross-validation for  parameter inference
+cv.resR <- cv4abc(param=abc_rep_info, abc_sims, nval=5,tols=c(0.05,0.10,0.15,0.2,0.25,0.3,0.35), method="rejection")
+cv.resL <- cv4abc(param=abc_rep_info, abc_sims, nval=5,tols=c(.15,0.2,0.25), method="loclinear")
+cv.resRd <- cv4abc(param=abc_rep_info, abc_sims, nval=5,tols=c(.15,0.2,0.25), method="ridge")
+df <- as.data.frame(summary(cv.resR))
+df <- rbind(df,summary(cv.resL))
+df <- rbind(df,summary(cv.resRd))
+
+#which.min(df[,1]) #use this to examine tolerance level with lowest error for each variable
+#For rejection and loclinear, tol 0.25. Ridge does not perform well.
+#Do a neural net (but cv4abc function doesn't work well) at tol=0.25
+
+abc_resR <- abc(abc_obs, abc_rep_info, abc_sims , tol = 0.25, method = "rejection")
+abc_resL <- abc(abc_obs, abc_rep_info, abc_sims , tol = 0.25, method = "loclinear")
+abc_resN <- abc(abc_obs, abc_rep_info, abc_sims , tol = 0.25, method = "neuralnet",sizenet=2)
+#had to reduce the sizenet to 2 (from defaulty 5) due to weights error
+
+summary(abc_resR)
+summary(abc_resL)
+summary(abc_resN)
+
+#Save parameters from the rejection and neural net fit.
+rej_tbl <- summary(abc_resR)
+write.table(rej_tbl,file="abc_results/parameters_rejection.txt",sep="\t")
+
+nnet_tbl <- summary(abc_resN)
+write.table(nnet_tbl,file="abc_results/parameters_neuralnet.txt",sep="\t")
