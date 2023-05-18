@@ -4,6 +4,7 @@ library(sf)
 library(tigris)
 library(raster)
 library(ggforce)
+library(viridis)
 
 # Convert SLiM locations to coordinates
 raster_bbox <- c(-119.9996, -117.99993, 35.9995, 38.01215)
@@ -139,7 +140,73 @@ states <- st_as_sf(map("state", plot = FALSE, fill = TRUE))
 
 ggplot(data = states) +
   geom_sf() +
-  geom_sf(data = sample_rect, fill = NA) +
+  geom_sf(data = sample_rect, fill = NA,linewidth = 0.5) +
   geom_sf(data = locations) +
-  coord_sf(xlim = c(-124.5000, -114.99993), ylim = c(32.9995, 45.01215), expand = FALSE)
-ggsave("sample_area_big.png", width = 3, height = 5)
+  coord_sf(xlim = c(-124.5000, -114.99993), ylim = c(32.9995, 45.01215), expand = FALSE) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+ggsave("sample_area_big.png", width = 10)
+
+ggplot(data = states) +
+  geom_sf() +
+  geom_sf(data = sample_rect, fill = NA, linewidth = 0.5) +
+  coord_sf(xlim = c(-124.5000, -114.99993), ylim = c(32.9995, 45.01215), expand = FALSE) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+ggsave("sample_area_no_locations.png", width = 3, height = 4)
+
+#Species distribution models
+tifs <- file.path("../geo_layers",
+                  c("current.tif",
+                    "00300-04200_LH.tif",
+                    "04200_08326_MH.tif",
+                    "08326-11700_EH.tif",
+                    "11700_12900_YDS.tif",
+                    "12900_14700_BA.tif",
+                    "14700_17000_HS.tif",
+                    "21000_LGM_CCSM.tif")
+)
+rasters <- lapply(tifs, raster)
+rasters_pts <- lapply(rasters, rasterToPoints, spatial = TRUE, proj4string = CRS("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"))
+# Then to a 'conventional' dataframe
+rasters_df  <- lapply(rasters_pts, data.frame)
+names(rasters_df) <- c("0 ya",
+                       "00300-04200 ya",
+                       "04200-08326 ya",
+                       "08326-11700 ya",
+                       "11700-12900 ya",
+                       "12900-14700 ya",
+                       "14700-17000 ya",
+                       "21000 ya")
+rename_raster_col <- function(df){
+  names(df) <- c("quality", "x", "y", "optional")
+  return(df)
+}
+rasters_df <- lapply(rasters_df, rename_raster_col)
+all_rasters <- bind_rows(rasters_df, .id = "time")
+all_rasters$time <- factor(all_rasters$time, levels = c("21000 ya",
+                                                        "14700-17000 ya",
+                                                        "12900-14700 ya",
+                                                        "11700-12900 ya",
+                                                        "08326-11700 ya",
+                                                        "04200-08326 ya",
+                                                        "00300-04200 ya",
+                                                        "0 ya"))
+ggplot() +
+  geom_raster(data = all_rasters, aes(x = x, y = y, fill = quality)) +
+  geom_sf() +
+  facet_wrap(~time, nrow = 2) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  scale_fill_gradient(name = "Habitat quality", low = "white", high = "red")
+  scale_fill_viridis(name = "Habitat quality", option = "rocket", direction = -1, )
+ggsave("sdm.png", width = 10)
+
+test <- data.frame(x = 1:16, y = 1:16, quality = 0:15)
+ggplot() +
+  geom_raster(data = test, aes(x = x, y = y, fill = quality)) +
+  geom_sf() +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  scale_fill_viridis(name = "Habitat quality", option = "rocket", direction = -1, begin = )
+  scale_fill_gradient(name = "Habitat quality", low = "white", high = "red")
