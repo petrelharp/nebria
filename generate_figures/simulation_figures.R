@@ -134,6 +134,7 @@ ggplot(data = states) +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 ggsave("sample_area_no_locations.png", width = 3, height = 4)
 
+### Plot species distribution models on contours ###
 #Species distribution models
 tifs <- file.path("../geo_layers",
                   c("current.tif",
@@ -171,26 +172,60 @@ all_rasters$time <- factor(all_rasters$time, levels = c("21000 ya",
                                                         "04200-08326 ya",
                                                         "00300-04200 ya",
                                                         "0 ya"))
+
 ggplot() +
   geom_raster(data = all_rasters, aes(x = x, y = y, fill = quality)) +
   geom_sf() +
-  facet_wrap(~time, nrow = 2) +
+  geom_sf(data=contour, colour=adjustcolor("black", 0.1), fill=NA) +
+  facet_wrap(~time_name, nrow = 2) +
   theme_bw() +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
   scale_fill_gradient(name = "Habitat quality", low = "white", high = "red")
-  scale_fill_viridis(name = "Habitat quality", option = "rocket", direction = -1, )
 ggsave("sdm.png", width = 10)
 
-test <- data.frame(x = 1:16, y = 1:16, quality = 0:15)
+### Add simulation to sdms ###
+
+all_rasters <- all_rasters |> mutate(time_name = factor(case_match(time, 
+                                                            "21000 ya" ~ "20999 ya",
+                                                            "14700-17000 ya" ~ "15850 ya",
+                                                            "12900-14700 ya" ~ "13800 ya",
+                                                            "11700-12900 ya" ~ "12300 ya",
+                                                            "08326-11700 ya" ~ "10013 ya",
+                                                            "04200-08326 ya" ~ "6263 ya",
+                                                            "00300-04200 ya" ~ "2250 ya",
+                                                            "0 ya" ~ "0 ya"),
+                                                            levels = c("20999 ya", "15850 ya",
+                                                                       "13800 ya", "12300 ya",
+                                                                       "10013 ya", "6263 ya",
+                                                                       "2250 ya", "0 ya")))
+for(timepoint in levels(all_inds$time_name)){
+  sdm <- filter(all_rasters, time_name == timepoint)
+  sim_points <- filter(all_inds, time_name == timepoint)
+  p <- ggplot() +
+    geom_raster(data = sdm, aes(x = x, y = y, fill = quality)) +
+    geom_sf() +
+    geom_sf(data=contour, colour=adjustcolor("black", 0.1), fill=NA) +
+    theme_bw() +
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    scale_fill_gradient(name = "Habitat quality", low = "white", high = "red") +
+    geom_sf(data = sim_points, size = 0.1) +
+    geom_title(timepoint)
+  print(timepoint)
+  print(p)
+}
+
 ggplot() +
-  geom_raster(data = test, aes(x = x, y = y, fill = quality)) +
+  geom_raster(data = all_rasters, aes(x = x, y = y, fill = quality)) +
   geom_sf() +
+  geom_sf(data=contour, colour=adjustcolor("black", 0.1), fill=NA) +
   theme_bw() +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
-  scale_fill_viridis(name = "Habitat quality", option = "rocket", direction = -1, begin = )
-  scale_fill_gradient(name = "Habitat quality", low = "white", high = "red")
+  scale_fill_gradient(name = "Habitat quality", low = "white", high = "red") +
+  geom_sf(data = all_inds, size = 0.01) +
+  facet_wrap(~time_name)
+ggsave("sim_with_sdm.png")
 
-# Plot opulation size and occupied patches
+# Plot population size and occupied patches
 ggplot(pop_size, aes(x = years_ago, y = num_individuals)) +
   geom_point() +
   scale_x_reverse() +
