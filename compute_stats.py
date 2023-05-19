@@ -11,10 +11,11 @@ import matplotlib.collections as mc
 
 import recap
 
-if len(sys.argv) != 2:
+if len(sys.argv) != 5:
     print(f"""
     Usage:
-        python {sys.argv[0]} <input>.trees
+        python {sys.argv[0]} <input>.trees (num recap reps) (num mut replicates) (num patch matching reps)
+    and if (num recap reps) is 0 then the parameters are taken from metadata.
     """)
     sys.exit()
 
@@ -28,6 +29,14 @@ if not os.path.exists(basedir):
     os.makedirs(basedir)
 
 
+### number of replicates
+# the total number of replicates will the product of these
+replicates = {
+        "recapitation": int(sys.argv[2]),
+        "mutation": int(sys.argv[3]),
+        "match_patch": int(sys.argv[4]),
+}
+
 start_time = time.time()
 rng = np.random.default_rng()
 
@@ -37,14 +46,6 @@ max_dist = 20  # km
 min_patch_size = 20  # individuals
 # radius within which to merge groups of individuals
 patch_radius = 0.5  # km
-
-### number of replicates
-# the total number of replicates will the product of these
-replicates = {
-        "recapitation": 5,
-        "mutation": 5,
-        "match_patch": 5,
-}
 
 
 print(
@@ -182,11 +183,20 @@ if True:
 setup_time = time.time()
 print(f"time: Setup done in {setup_time - start_time}. Beginning recapitation.")
 
-for recap_rep in range(replicates["recapitation"]):
+recap_param_list = []
+if replicates["recapitation"] > 0:
+    recap_rows = rng.integers(0, recap.posterior_length, size=replicates["recapitation"])
+    for k in recap_rows:
+        recap_param_list.append(recap.get_params(k))
+else:
+    recap_params = recap.get_params()
+    for k in recap_params:
+        recap_params[k] = orig_ts.metadata['SLiM']['user_metadata'][k][0]
+    recap_param_list.append(recap_params)
 
+for recap_params in recap_param_list:
     recap_seed = rng.integers(1000000)
-    recap_row = rng.integers(recap.posterior_length)
-    demog, recap_params = recap.get_demography(recap_row)
+    demog = recap.make_demography(recap_params)
     ts = msprime.sim_ancestry(
             initial_state=orig_ts,
             demography=demog,

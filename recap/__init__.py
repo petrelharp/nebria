@@ -21,14 +21,14 @@ def dist(x, y):
     )
 
 
-def get_demography(rep=0):
-    '''
-    This is from git@github.com:yimingweng/N_ingens_ABC/scripts/model2.py
-    '''
+def get_params(rep=0):
     params = {
         k: posterior[k][rep] for k in posterior
     }
+    return params
 
+
+def make_demography(params):
     demography = msprime.Demography()
     demography.add_population(name="SLiM", initial_size=1)
     demography.add_population(name="north", initial_size=params["Nc"]) # Conness
@@ -42,6 +42,15 @@ def get_demography(rep=0):
             proportions=[params["CS"], 1 - params["CS"]]
     )
     demography.add_population_split(time=params["T1"], derived=["north", "south"], ancestral="COS")
+    return demography
+
+
+def get_demography(rep=0):
+    '''
+    This is from git@github.com:yimingweng/N_ingens_ABC/scripts/model2.py
+    '''
+    params = get_params(rep)
+    demography = make_demography(params)
     return demography, params
 
 

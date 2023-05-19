@@ -12,5 +12,5 @@
 DIRS=($(find param_grid/estimated_sims_2023-03-21 -mindepth 1 -type 'd' -name 'run*'))
 DIR=${DIRS[$SLURM_ARRAY_TASK_ID]}
 
-python compute_stats.py $DIR/sim_*.trees
+python compute_stats.py $DIR/sim_*.trees 5 5 5
  

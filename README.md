@@ -26,7 +26,7 @@
     2. `sim_<seed>.log`: a logfile of statistics
     3. `sim_<seed>_<years ago>.png`: snapshots of the simulation
 
-- then we compute stats using `python3 compute_stats.py [name of trees file]`. This creates a subdirectory,
+- then we compute stats using `python3 compute_stats.py [name of trees file] [num reps] ...`. This creates a subdirectory,
     which is named `<name of tree file without .trees>_stats`, and in this:
 
     1. The `repname` will be `{basedir}/stats_{recap_seed}_{mut_seed}_{match_rep}`,
