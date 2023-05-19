@@ -194,7 +194,7 @@ else:
         recap_params[k] = orig_ts.metadata['SLiM']['user_metadata'][k][0]
     recap_param_list.append(recap_params)
 
-for recap_params in recap_param_list:
+for recap_rep, recap_params in enumerate(recap_param_list):
     recap_seed = rng.integers(1000000)
     demog = recap.make_demography(recap_params)
     ts = msprime.sim_ancestry(

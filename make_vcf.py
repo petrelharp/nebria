@@ -173,11 +173,13 @@ if True:
 setup_time = time.time()
 print(f"time: Setup done in {setup_time - start_time}. Beginning recapitation.")
 
-for recap_rep in range(1):
+recap_params = recap.get_params()
+for k in recap_params:
+    recap_params[k] = orig_ts.metadata['SLiM']['user_metadata'][k][0]
 
+for recap_rep in range(1):
     recap_seed = rng.integers(1000000)
-    recap_row = rng.integers(recap.posterior_length)
-    demog, recap_params = recap.get_demography(recap_row)
+    demog = recap.make_demography(recap_params)
     ts = msprime.sim_ancestry(
             initial_state=orig_ts,
             demography=demog,
