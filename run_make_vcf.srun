@@ -1,17 +1,17 @@
 #!/bin/bash
 #SBATCH -A kernlab
 #SBATCH --partition=kern                ### Partition
-#SBATCH --job-name=param_grid           ### Job Name
-#SBATCH --time=8:00:00                 ### WallTime
+#SBATCH --job-name=make_vcf             ### Job Name
+#SBATCH --time=8:00:00                  ### WallTime
 #SBATCH --nodes=1                       ### Number of Nodes
 #SBATCH --ntasks=1                      ### Number of tasks per array job
 #SBATCH --cpus-per-task=1               ### Number of CPU cores per task
 #SBATCH --mem=24G
 
-# use with --array=0-n for n treefiles
-
-TREEFILES=("$@")
-TF=${TREEFILES[$SLURM_ARRAY_TASK_ID]}
-
-python make_vcf.py $TF
+if [ $# -lt 1 ]
+then
+    echo "Usage: sbatch run_make_vcf.srun <treefile path>"
+else
+    python make_vcy.py $1
+fi
  

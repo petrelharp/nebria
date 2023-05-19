@@ -8,6 +8,8 @@ if (length(args) != 2) {
 start_row <- args[1]
 end_row <- args[2]
 
+library(jsonlite)
+
 datestring = format(Sys.time(), "%Y-%m-%d")
 
 param_values <- read.csv("abc_results/posterior_draws.csv", row.names=1)
@@ -40,7 +42,7 @@ for(j in 1:nrow(param_values)) {
   for (xn in names(param_values)) {
     params[[xn]] <- param_values[[xn]][j]
   }
-  writeLines(toJSON(params, pretty=TRUE), file.path(this_dir, "params.json"))
+  writeLines(jsonlite::toJSON(params, pretty=TRUE), file.path(this_dir, "params.json"))
   for (f in setup_files) {
     file.symlink(file.path("..", "..", "..", f), file.path(this_dir, f))
   }
