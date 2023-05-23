@@ -12,6 +12,6 @@ if [ $# -lt 1 ]
 then
     echo "Usage: sbatch run_make_vcf.srun <treefile path>"
 else
-    python make_vcy.py $1
+    python make_vcf.py $1
 fi
  

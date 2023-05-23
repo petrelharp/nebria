@@ -257,7 +257,8 @@ for recap_rep in range(1):
             for name in sample_sets:
                 all_samples.extend(sample_sets[name])
             vcf_ts = ts.simplify(all_samples)
-            vcf_ts.write_vcf(vcf_file)
+            with open(vcf_file, "w") as vf:
+                vcf_ts.write_vcf(vf)
 
             ####
             # compute statistics
