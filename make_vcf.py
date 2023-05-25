@@ -201,7 +201,7 @@ for recap_rep in range(1):
         # Generate a random mutation rate from a uniform distribution
         mut_rate = rng.uniform(2.0e-9, 5.6e-9)
         ts = msprime.sim_mutations(
-		ts,
+                ts,
                 rate=mut_rate,
                 model=msprime.SLiMMutationModel(type=0),
                 random_seed=mut_seed,
@@ -254,11 +254,24 @@ for recap_rep in range(1):
             # write vcf
             vcf_file = f"{repname}.vcf"
             all_samples = []
+            indiv_name_map = {}
             for name in sample_sets:
-                all_samples.extend(sample_sets[name])
+                nodelist = sample_sets[name]
+                all_samples.extend(nodelist)
+                indivlist = np.unique(ts.nodes_individual[nodelist])
+                shortname = name.replace(" ", "")
+                for n in indivlist:
+                    pid = ts.individual(n).metadata['pedigree_id']
+                    indiv_name_map[pid] = f"{shortname}_{pid}"
+
             vcf_ts = ts.simplify(all_samples)
+            all_indivs = np.unique(ts.nodes_individual[vcf_ts.samples()])
+            all_indiv_names = [
+                indiv_name_map[vcf_ts.individual(n).metadata['pedigree_id']] for n in all_indivs
+            ]
+            vcf_ts = pyslim.convert_alleles(pyslim.generate_nucleotides(vcf_ts))
             with open(vcf_file, "w") as vf:
-                vcf_ts.write_vcf(vf)
+                vcf_ts.write_vcf(vf, individuals=all_indivs, individual_names=all_indiv_names)
 
             ####
             # compute statistics
