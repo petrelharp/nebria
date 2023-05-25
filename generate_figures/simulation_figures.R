@@ -4,7 +4,6 @@ library(sf)
 library(tigris)
 library(raster)
 library(ggforce)
-library(viridis)
 
 # Convert slim coordinates to lat/long
 
@@ -63,7 +62,9 @@ ggsave("contours.png")
 #Remove points with 0 ancestry proportions
 anc <- filter(anc, anc_prop >0)
 # Add names of individuals
-anc <- mutate(anc, ind_name = case_when(ind == 2166 ~ "Northernmost individual", ind == 4299 ~ "Southernmost individual"))
+north_ind <- anc$ind[which.max(anc$slim_y)]
+south_ind <- anc$ind[which.min(anc$slim_y)]
+anc <- mutate(anc, ind_name = case_when(ind == north_ind ~ "Northernmost individual", ind == south_ind ~ "Southernmost individual"))
 # Add names for time ago
 anc <- mutate(anc, time_name = factor(paste0(time, " ya"), levels = c("0 ya", "2250 ya", "6263 ya", "10013 ya",
                                           "12300 ya", "13800 ya", "15850 ya", "20999 ya")))
@@ -164,7 +165,7 @@ rename_raster_col <- function(df){
 }
 rasters_df <- lapply(rasters_df, rename_raster_col)
 all_rasters <- bind_rows(rasters_df, .id = "time")
-all_rasters$time <- factor(all_rasters$time, levels = c("21000 ya",
+all_rasters$time_name <- factor(all_rasters$time, levels = c("21000 ya",
                                                         "14700-17000 ya",
                                                         "12900-14700 ya",
                                                         "11700-12900 ya",
@@ -174,13 +175,13 @@ all_rasters$time <- factor(all_rasters$time, levels = c("21000 ya",
                                                         "0 ya"))
 
 ggplot() +
-  geom_raster(data = all_rasters, aes(x = x, y = y, fill = quality)) +
-  geom_sf() +
   geom_sf(data=contour, colour=adjustcolor("black", 0.1), fill=NA) +
+  geom_raster(data = all_rasters, aes(x = x, y = y, fill = quality)) +
+  scale_fill_gradient(name = "Habitat quality", low = "white", high = "red") +
   facet_wrap(~time_name, nrow = 2) +
   theme_bw() +
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
-  scale_fill_gradient(name = "Habitat quality", low = "white", high = "red")
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  
 ggsave("sdm.png", width = 10)
 
 ### Add simulation to sdms ###
@@ -209,7 +210,7 @@ for(timepoint in levels(all_inds$time_name)){
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
     scale_fill_gradient(name = "Habitat quality", low = "white", high = "red") +
     geom_sf(data = sim_points, size = 0.1) +
-    geom_title(timepoint)
+    ggtitle(timepoint)
   print(timepoint)
   print(p)
 }
