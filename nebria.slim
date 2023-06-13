@@ -157,7 +157,7 @@ s99 2000 late() {
 		+ "(" + this_num + ") and interpolating to " + RASTERS[NEXT_RASTER_NUM]
 		+ "(" + NEXT_RASTER_NUM + ").");
 	output_negative = NUM_GENS - RASTER_SWITCH_TIMES_AGO/STEPSIZE;
-	output_generations = asInteger(output_negative[output_negative > 0]);
+	output_generations = sort(unique(c( 100, asInteger(output_negative[output_negative > 0]) )));
 	png_generations = sort(unique(
 		c(1, 500 * seqLen(asInteger(NUM_GENS/500)), NUM_GENS, output_generations)
 	));

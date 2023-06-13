@@ -1,3 +1,7 @@
+# June 8:
+
+- look at LD and *histograms* of pi, dxy across regions
+
 # April 13:
 
 TODO:
