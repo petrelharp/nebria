@@ -4,6 +4,7 @@ library(sf)
 library(tigris)
 library(raster)
 library(ggforce)
+library(viridis)
 
 # Convert slim coordinates to lat/long
 
@@ -28,11 +29,6 @@ anc <- rename(anc, slim_x = loc1, slim_y = loc2)
 anc <- cbind(anc, slim_to_latlong(anc))
 all_inds <- rename(all_inds, slim_x = loc1, slim_y = loc2)
 all_inds <- cbind(all_inds, slim_to_latlong(all_inds))
-anc <-  st_as_sf(
-  anc,
-  coords = c("longitude", "latitude"), dim="XY",
-  crs = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
-)
 
 all_inds <-  st_as_sf(
   all_inds,
@@ -62,21 +58,32 @@ ggsave("contours.png")
 #Remove points with 0 ancestry proportions
 anc <- filter(anc, anc_prop >0)
 # Add names of individuals
-north_ind <- anc$ind[which.max(anc$slim_y)]
-south_ind <- anc$ind[which.min(anc$slim_y)]
-anc <- mutate(anc, ind_name = case_when(ind == north_ind ~ "Northernmost individual", ind == south_ind ~ "Southernmost individual"))
+named_df <- anc %>% filter(time == 0, anc_prop == 1) %>%
+  mutate(ind_name = factor(case_when(slim_y == max(slim_y) ~ "North",
+                   slim_y ==  min(slim_y) ~ "South",
+                   .default = "Middle"),
+                   levels = c("North", "Middle", "South"))) %>% dplyr::select(ind_name, ind)
+anc <- right_join(named_df, anc, multiple = "all")
+anc <-  st_as_sf(
+  anc,
+  coords = c("longitude", "latitude"), dim="XY",
+  crs = "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
+)
+
 # Add names for time ago
 anc <- mutate(anc, time_name = factor(paste0(time, " ya"), levels = c("0 ya", "2250 ya", "6263 ya", "10013 ya",
                                           "12300 ya", "13800 ya", "15850 ya", "20999 ya")))
-anc_south <- filter(anc, ind_name == "Southernmost individual")
-anc_north <- filter(anc, ind_name == "Northernmost individual")
+anc <- mutate(anc, time_name = fct_rev(time_name))
+anc_south <- filter(anc, ind_name == "South")
+anc_north <- filter(anc, ind_name == "North")
+anc_middle <- filter(anc, ind_name == "Middle")
 
 ggplot() +
   geom_stars(data=shade) +
   scale_fill_gradientn(colours=c("#000000BB", "#FFFFFFBB"), guide='none') +
   geom_sf(data=contour, colour=adjustcolor("black", 0.1), fill=NA) +
   geom_sf(data = anc_south, aes(size = anc_prop)) +
-  facet_wrap(~time_name) +
+  facet_wrap(~time_name, nrow = 2) +
   theme(legend.position = "none", strip.text.x = element_text(size = 15))
 ggsave("anc_south.png")
 
@@ -85,9 +92,53 @@ ggplot() +
   scale_fill_gradientn(colours=c("#000000BB", "#FFFFFFBB"), guide='none') +
   geom_sf(data=contour, colour=adjustcolor("black", 0.1), fill=NA) +
   geom_sf(data = anc_north, aes(size = anc_prop)) +
-  facet_wrap(~time_name) +
+  facet_wrap(~time_name, nrow = 2) +
   theme(legend.position = "none", strip.text.x = element_text(size = 15))
 ggsave("anc_north.png")
+
+ggplot() +
+  geom_stars(data=shade) +
+  scale_fill_gradientn(colours=c("#000000BB", "#FFFFFFBB"), guide='none') +
+  geom_sf(data=contour, colour=adjustcolor("black", 0.1), fill=NA) +
+  geom_sf(data = anc_middle, aes(size = anc_prop)) +
+  facet_wrap(~time_name, nrow = 2) +
+  theme(legend.position = "none", strip.text.x = element_text(size = 15))
+ggsave("anc_middle.png")
+
+ggplot() +
+  geom_stars(data=shade) +
+  scale_fill_gradientn(colours=c("#000000BB", "#FFFFFFBB"), guide='none') +
+  geom_sf(data=contour, colour=adjustcolor("black", 0.1), fill=NA) +
+  geom_sf(data = anc, aes(size = anc_prop, color = ind_name)) +
+  scale_color_viridis_d(name = "Individual", alpha = 0.5) +
+  facet_wrap(~time_name, nrow = 2) +
+  theme(strip.text.x = element_text(size = 15),
+        axis.text.x = element_text(angle = 90))
+ggsave("anc_overlapped_long.png")
+
+focal_times <- c("20999 ya", "12300 ya", "6263 ya", "0 ya")
+anc_short <- filter(anc, time_name %in% focal_times)
+ggplot() +
+  geom_stars(data=shade) +
+  scale_fill_gradientn(colours=c("#000000BB", "#FFFFFFBB"), guide='none') +
+  geom_sf(data=contour, colour=adjustcolor("black", 0.1), fill=NA) +
+  geom_sf(data = anc_short, aes(size = anc_prop, color = ind_name)) +
+  scale_color_viridis_d(name = "Individual", alpha = 0.5) +
+  scale_size_continuous(name = "Ancestry proportion") +
+  facet_wrap(~time_name, ncol = 4) +
+  theme(text=element_text(size=21),
+        strip.text.x = element_text(size = 15),
+        axis.text.x = element_text(angle = 90))
+ggsave("anc_overlapped_short.png")
+
+ggplot() +
+  geom_stars(data=shade) +
+  scale_fill_gradientn(colours=c("#000000BB", "#FFFFFFBB"), guide='none') +
+  geom_sf(data=contour, colour=adjustcolor("black", 0.1), fill=NA) +
+  geom_sf(data = anc_short, aes(size = anc_prop), alpha = 0.5) +
+  facet_grid(ind_name~time_name) +
+  theme(strip.text.x = element_text(size = 15))
+ggsave("anc_short.png")
 
 all_inds <- mutate(all_inds, time_name = factor(paste0(time, " ya"), 
                                                 levels = c("20999 ya", "15850 ya",
@@ -104,6 +155,25 @@ ggplot() +
   theme(strip.text.x = element_text(size = 15),
         strip.background.x = element_blank())
 ggsave("locations.png")
+
+# Combine ancestry and location plots
+focal_times <- c("20999 ya", "12300 ya", "6263 ya", "0 ya")
+anc_combine <- filter(anc, time_name %in% focal_times) |> mutate(point_size = anc_prop, point_type = "ancestry")
+all_combine <- filter(all_inds, time_name %in% focal_times) |> mutate(point_size = 0.01, point_type = "locations", ind_name = "other")
+anc_inds <- bind_rows(anc_combine, all_combine)
+# Set order of times
+anc_inds <- mutate(anc_inds, time_name = fct_rev(time_name))
+# Set colors for individuals
+ind_cols <- c("North" = "blue", "South" = "orange", "Middle" = "green","other" = "black")
+ggplot() +
+  geom_stars(data=shade) +
+  scale_fill_gradientn(colours=c("#000000BB", "#FFFFFFBB"), guide='none') +
+  geom_sf(data=contour, colour=adjustcolor("black", 0.1), fill=NA) +
+  geom_sf(data = anc_inds, aes(size = point_size, color = ind_name)) +
+  scale_color_manual(name = "Individual", values = ind_cols) +
+  facet_grid(point_type~time_name) +
+  theme(strip.text.x = element_text(size = 15))
+ggsave("ancestry_locations.png")
 
 ### Plot simulated area ###
 
@@ -173,16 +243,30 @@ all_rasters$time_name <- factor(all_rasters$time, levels = c("21000 ya",
                                                         "04200-08326 ya",
                                                         "00300-04200 ya",
                                                         "0 ya"))
-
+focal_times <- c("21000 ya", "12900-14700 ya", "04200-08326 ya", "0 ya")
+sdm_short <- filter(all_rasters, time_name %in% focal_times)
 ggplot() +
   geom_sf(data=contour, colour=adjustcolor("black", 0.1), fill=NA) +
   geom_raster(data = all_rasters, aes(x = x, y = y, fill = quality)) +
   scale_fill_gradient(name = "Habitat quality", low = "white", high = "red") +
   facet_wrap(~time_name, nrow = 2) +
   theme_bw() +
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  theme(text=element_text(size=21),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
   
 ggsave("sdm.png", width = 10)
+ggplot() +
+  geom_sf(data=contour, colour=adjustcolor("black", 0.1), fill=NA) +
+  geom_raster(data = sdm_short, aes(x = x, y = y, fill = quality)) +
+  scale_fill_gradient(name = "Habitat quality", low = "white", high = "red") +
+  facet_wrap(~time_name, nrow = 2) +
+  theme_bw() +
+  theme(text=element_text(size=21),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+
+ggsave("sdm_short.png", width = 10)
 
 ### Add simulation to sdms ###
 
@@ -220,10 +304,12 @@ ggplot() +
   geom_sf() +
   geom_sf(data=contour, colour=adjustcolor("black", 0.1), fill=NA) +
   theme_bw() +
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
   scale_fill_gradient(name = "Habitat quality", low = "white", high = "red") +
   geom_sf(data = all_inds, size = 0.01) +
-  facet_wrap(~time_name)
+  facet_wrap(~time_name, nrow = 2) +
+  theme(text=element_text(size=21),
+        axis.text.x = element_text(angle = 90),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 ggsave("sim_with_sdm.png")
 
 # Plot population size and occupied patches
