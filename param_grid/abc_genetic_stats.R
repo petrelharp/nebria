@@ -115,3 +115,76 @@ write.table(rej_tbl,file="abc_results/parameters_rejection.txt",sep="\t")
 
 nnet_tbl <- summary(abc_resN)
 write.table(nnet_tbl,file="abc_results/parameters_neuralnet.txt",sep="\t")
+
+posterior <- data.frame(abc_resN$adj.values) %>% rename("Average population size per patch" = POP_SIZE,
+                                                        "Probability of dispersal" = P_D,
+                                                        "Dispersal distance" = DISPERSAL_SIGMA,
+                                                        "Yearly variation in habitat quality" = YEAR_SHAPE,
+                                                        "Mutation rate" = mut_rate,
+                                                        T2=T2, T1=T1, CS=CS, AS=AS, NE=NE, Na=Na, Nc=Nc, Ns=Ns) %>%
+  pivot_longer(everything(), names_to = "Parameter")
+
+estimates_vec <- apply(abc_resN$adj.values, 2, median)
+names(estimates_vec) <- c("T2", "T1", "CS", "AS", "NE", "Na", "Nc", "Ns", 
+                         "Mutation rate", "Average population size per patch", 
+                         "Probability of dispersal",
+                         "Dispersal distance", 
+                         "Yearly variation in habitat quality")
+estimates <- data.frame(Parameter = names(estimates_vec), value = estimates_vec)
+
+prior <- abc_rep_info %>% rename("Average population size per patch" = POP_SIZE,
+                                 "Probability of dispersal" = P_D,
+                                 "Dispersal distance" = DISPERSAL_SIGMA,
+                                 "Yearly variation in habitat quality" = YEAR_SHAPE,
+                                 "Mutation rate" = mut_rate,
+                                 T2=T2, T1=T1, CS=CS, AS=AS, NE=NE, Na=Na, Nc=Nc, Ns=Ns) %>%
+  pivot_longer(everything(), names_to = "Parameter" )
+msprime_params <- c("T2", "T1", "CS", "AS", "NE", "Na", "Nc", "Ns")
+slim_params <- c("Average population size per patch", "Probability of dispersal",
+                 "Dispersal distance", "Yearly variation in habitat quality")
+mut_params <- c("Mutation rate")
+posterior_msprime <- filter(posterior, Parameter %in% msprime_params)
+prior_msprime <- filter(prior, Parameter %in% msprime_params)
+est_msprime <- filter(estimates, Parameter %in% msprime_params)
+posterior_slim <- filter(posterior, Parameter %in% slim_params)
+prior_slim <- filter(prior, Parameter %in% slim_params)
+est_slim <- filter(estimates, Parameter %in% slim_params)
+posterior_mut <- filter(posterior, Parameter %in% mut_params)
+prior_mut <- filter(prior, Parameter %in% mut_params)
+est_mut <- filter(estimates, Parameter %in% mut_params)
+
+ggplot(prior, aes(x = value)) +
+  geom_density() +
+  geom_density(data = posterior, aes(x = value), color = "blue") +
+  geom_vline(aes(xintercept = value), data = estimates, color = "blue") +
+  facet_wrap(~Parameter, scales="free")
+
+dens_cols <- c("prior" = "black", "posterior" = "blue")
+ggplot(prior_msprime, aes(x = value, fill = "prior")) +
+  geom_density(alpha = 0.5) +
+  geom_density(data = posterior_msprime, aes(x = value, fill = "posterior"), alpha = 0.5) +
+  geom_vline(aes(xintercept = value), data = est_msprime, color = "blue") +
+  facet_wrap(~Parameter, scales="free", ncol = 2) +
+  scale_fill_manual(name = "", values = dens_cols) +
+  theme(text=element_text(size=18),
+        axis.text.x = element_text(angle = 90))
+ggsave("../generate_figures/msprime_params.png")
+ggplot(prior_slim, aes(x = value, fill = "prior")) +
+  geom_density(alpha = 0.5) +
+  geom_density(data = posterior_slim, aes(x = value, fill = "posterior"), alpha = 0.5) +
+  geom_vline(aes(xintercept = value), data = est_slim, color = "blue") +
+  facet_wrap(~Parameter, scales="free") +
+  scale_fill_manual(name = "", values = dens_cols) +
+  theme(text=element_text(size=18),
+        axis.text.x = element_text(angle = 90))
+ggsave("../generate_figures/slim_params.png")
+ggplot(prior_mut, aes(x = value, fill = "prior")) +
+  geom_density(alpha = 0.5) +
+  geom_density(data = posterior_mut, aes(x = value, fill = "posterior"), alpha = 0.5) +
+  geom_vline(aes(xintercept = value), data = est_mut, color = "blue") +
+  facet_wrap(~Parameter, scales="free") +
+  scale_fill_manual(name = "", values = dens_cols) +
+  theme(text=element_text(size=18),
+        axis.text.x = element_text(angle = 90))
+ggsave("../generate_figures/mut_params.png")
+

@@ -21,7 +21,7 @@ slim_to_latlong <- function(slim_coord){
 # Simulation results from "best fit" simulation
 anc <- read_csv("data_for_ancestry_plot.csv")
 all_inds <-  read_csv("data_for_all_inds.csv")
-pop_size <- read_csv("../param_grid/post_21000_2022-12-05/run_2022-12-05_000018/sim_1876298096991.log",
+pop_size <- read_csv("../param_grid/abc_median/sim_4177974911520.log",
                        skip = 1)
 
 # Convert slim coordinates to lat/long
@@ -257,14 +257,15 @@ ggplot() +
   
 ggsave("sdm.png", width = 10)
 ggplot() +
-  geom_sf(data=contour, colour=adjustcolor("black", 0.1), fill=NA) +
   geom_raster(data = sdm_short, aes(x = x, y = y, fill = quality)) +
   scale_fill_gradient(name = "Habitat quality", low = "white", high = "red") +
-  facet_wrap(~time_name, nrow = 2) +
+  geom_sf(data=contour, colour=adjustcolor("black", 0.1), fill=NA) +
+  facet_wrap(~time_name, nrow = 1) +
   theme_bw() +
-  theme(text=element_text(size=21),
+  theme(text=element_text(size=18),
         panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank())
+        panel.grid.minor = element_blank(),
+        axis.text.x = element_text(angle = 90))
 
 ggsave("sdm_short.png", width = 10)
 
@@ -311,6 +312,19 @@ ggplot() +
         axis.text.x = element_text(angle = 90),
         panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 ggsave("sim_with_sdm.png")
+
+ggplot() +
+  geom_raster(data = all_rasters, aes(x = x, y = y, fill = quality)) +
+  geom_sf() +
+  geom_sf(data=contour, colour=adjustcolor("black", 0.1), fill=NA) +
+  theme_bw() +
+  scale_fill_gradient(name = "Habitat quality", low = "white", high = "red") +
+  geom_sf(data = all_inds, size = 0.01) +
+  facet_wrap(~time_name, nrow = 1) +
+  theme(text=element_text(size=21),
+        axis.text.x = element_text(angle = 90),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+ggsave("sim_with_sdm_line.png")
 
 # Plot population size and occupied patches
 ggplot(pop_size, aes(x = years_ago, y = num_individuals)) +
